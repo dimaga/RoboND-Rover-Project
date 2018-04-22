@@ -41,7 +41,7 @@ def perspective_2_top(img):
 
 
 def main():
-    """Shows results of what the modules does if run as a separate application"""
+    """Shows results of what the module does if run as a separate application"""
 
     plt.figure(figsize=(6, 6))
 
