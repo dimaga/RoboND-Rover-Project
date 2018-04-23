@@ -70,5 +70,14 @@ class TestTransformations(unittest.TestCase):
         self.assertGreater(correlation, 0.6)
 
 
+    def test_warp_angle180(self):
+        """Test angle warping algorithms"""
+
+        self.assertAlmostEqual(0.0, transformations.warp_angle180(0))
+        self.assertAlmostEqual(0.0, transformations.warp_angle180(360))
+        self.assertAlmostEqual(-1.0, transformations.warp_angle180(-361))
+        self.assertAlmostEqual(2.4, transformations.warp_angle180(722.4))
+
+
 if __name__ == '__main__':
     unittest.main()

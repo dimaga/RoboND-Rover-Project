@@ -81,6 +81,20 @@ ROVER_CONF_DIRS = ROVER_CONF_POINTS / np.linalg.norm(
 np.nan_to_num(ROVER_CONF_DIRS, False)
 
 
+def warp_angle180(angle_deg):
+    """Warps an angle to be in a range of [-180, 180]"""
+
+    angle_deg = angle_deg % 360.0
+
+    if angle_deg > -180:
+        angle_deg -= 360.0
+
+    if angle_deg < -180:
+        angle_deg += 360.0
+
+    return angle_deg
+
+
 def main():
     """Shows results of what the module does if run as a separate application"""
 

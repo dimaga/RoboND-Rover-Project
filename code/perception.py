@@ -7,8 +7,13 @@ import transformations
 import classifiers
 import control
 
+
 def perception_step(rover):
     """Perform perception steps to update rover()"""
+
+    aligned_to_ground = (
+        abs(transformations.warp_angle180(rover.pitch) < 0.5
+            and transformations.warp_angle180(rover.roll)) < 0.5)
 
     img = rover.img
 
@@ -19,54 +24,58 @@ def perception_step(rover):
 
     rocks = classifiers.ROCKS.predict(img)
     rocks_top = transformations.perspective_2_top(rocks)
-    rover.global_conf_cur.fill(0)
 
-    cv2.warpAffine(
-        rocks_top,
-        loc_2_glob,
-        (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
-        rover.global_conf_cur)
+    if aligned_to_ground:
+        rover.global_conf_cur.fill(0)
 
-    # Clipping to prevent the map from being overconfident
-    rover.global_conf_rocks = np.clip(
-        rover.global_conf_rocks + rover.global_conf_cur,
-        -10.0,
-        10.0)
+        cv2.warpAffine(
+            rocks_top,
+            loc_2_glob,
+            (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
+            rover.global_conf_cur)
+
+        # Clipping to prevent the map from being overconfident
+        rover.global_conf_rocks = np.clip(
+            rover.global_conf_rocks + rover.global_conf_cur,
+            -10.0,
+            100.0)
 
     navi = classifiers.NAVI.predict(img)
     navi_top = transformations.perspective_2_top(navi)
 
-    rover.global_conf_cur.fill(0)
+    if aligned_to_ground:
+        rover.global_conf_cur.fill(0)
 
-    cv2.warpAffine(
-        navi_top,
-        loc_2_glob,
-        (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
-        rover.global_conf_cur)
+        cv2.warpAffine(
+            navi_top,
+            loc_2_glob,
+            (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
+            rover.global_conf_cur)
 
-    # Clipping to prevent the map from being overconfident
-    rover.global_conf_navi = np.clip(
-        rover.global_conf_navi + rover.global_conf_cur,
-        -255.0,
-        255.0)
+        # Clipping to prevent the map from being overconfident
+        rover.global_conf_navi = np.clip(
+            rover.global_conf_navi + rover.global_conf_cur,
+            -255.0,
+            255.0)
 
-    rover.nav_dir = control.navi_direction(navi_top, False)
     rover.nav_pixels = np.sum((navi_top > 0).ravel())
+    rover.nav_dir = control.navi_direction(navi_top, False)
 
     rover.vision_image[:, :, 0] = 255 * (navi_top < 0)
     rover.vision_image[:, :, 1] = 255 * (rocks_top > 0)
     rover.vision_image[:, :, 2] = 255 * (navi_top > 0)
 
-    rocks_mask = rover.global_conf_rocks > 0
+    if aligned_to_ground:
+        rocks_mask = rover.global_conf_rocks > 0
 
-    rover.worldmap[:, :, 0] = np.maximum(
-        255 * rocks_mask,
-        -rover.global_conf_navi * (rover.global_conf_navi < 0))
+        rover.worldmap[:, :, 0] = np.maximum(
+            255 * rocks_mask,
+            -rover.global_conf_navi * (rover.global_conf_navi < 0))
 
-    rover.worldmap[:, :, 1] = 255 * rocks_mask
+        rover.worldmap[:, :, 1] = 255 * rocks_mask
 
-    rover.worldmap[:, :, 2] = np.maximum(
-        255 * rocks_mask,
-        rover.global_conf_navi * (rover.global_conf_navi > 0))
+        rover.worldmap[:, :, 2] = np.maximum(
+            255 * rocks_mask,
+            rover.global_conf_navi * (rover.global_conf_navi > 0))
 
     return rover
