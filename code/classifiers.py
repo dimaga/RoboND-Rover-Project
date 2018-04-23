@@ -95,7 +95,6 @@ def main():
     plt.imshow(NAVI.predict(images.ROCK2), cmap='gray')
 
     plt.show()
-    return
 
 
 if __name__ == '__main__':
