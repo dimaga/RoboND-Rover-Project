@@ -10,6 +10,7 @@ import pandas as pd
 import matplotlib.image as mpimg
 
 import transformations
+import images
 
 
 class TestTransformations(unittest.TestCase):
@@ -51,8 +52,7 @@ class TestTransformations(unittest.TestCase):
         img = mpimg.imread(robot_log["Path"].tolist()[idx])
         img_top = transformations.perspective_2_top(img)
 
-        ground_truth_bw = 255 * mpimg.imread(
-            '../calibration_images/map_bw.png').astype(np.uint8)
+        ground_truth_bw = 255 * images.GROUND_TRUTH.astype(np.uint8)
 
         map_piece = cv2.warpAffine(
             img_top,

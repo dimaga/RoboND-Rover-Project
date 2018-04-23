@@ -51,8 +51,8 @@ class RoverState():
         self.steer = 0  # Current steering angle
         self.throttle = 0  # Current throttle value
         self.brake = 0  # Current brake value
-        self.nav_angles = None  # Angles of navigable terrain pixels
-        self.nav_dists = None  # Distances of navigable terrain pixels
+        self.nav_dir = None  # Angles of navigable terrain pixels
+        self.nav_pixels = None # Number of navigatable pixels
         self.ground_truth = ground_truth_3d  # Ground truth worldmap
         self.mode = 'forward'  # Current mode (can be forward or stop)
         self.throttle_set = 0.2  # Throttle setting when accelerating
@@ -72,6 +72,9 @@ class RoverState():
         # Update this image with the positions of navigable terrain
         # obstacles and rock samples
         self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
+        self.global_conf_rocks = np.zeros((200, 200)).astype(np.float)
+        self.global_conf_navi = np.zeros((200, 200)).astype(np.float)
+        self.global_conf_cur = np.zeros((200, 200)).astype(np.float)
         self.samples_pos = None  # To store the actual sample positions
         self.samples_to_find = 0  # To store the initial count of samples
         self.samples_located = 0  # To store number of samples located on map
@@ -82,7 +85,7 @@ class RoverState():
 
 
 # Initialize our rover
-Rover = RoverState()
+rover = RoverState()
 
 # Variables to track frames per second (FPS)
 # Intitialize frame counter
@@ -105,18 +108,18 @@ def telemetry(sid, data):
     print("Current FPS: {}".format(fps))
 
     if data:
-        global Rover
-        # Initialize / update Rover with current telemetry
-        Rover, image = update_rover(Rover, data)
+        global rover
+        # Initialize / update rover with current telemetry
+        rover, image = update_rover(rover, data)
 
-        if np.isfinite(Rover.vel):
+        if np.isfinite(rover.vel):
 
-            # Execute the perception and decision steps to update the Rover's state
-            Rover = perception_step(Rover)
-            Rover = decision_step(Rover)
+            # Execute the perception and decision steps to update the rover's state
+            rover = perception_step(rover)
+            rover = decision_step(rover)
 
             # Create output images to send to server
-            out_image_string1, out_image_string2 = create_output_images(Rover)
+            out_image_string1, out_image_string2 = create_output_images(rover)
 
             # The action step!  Send commands to the rover!
 
@@ -125,13 +128,13 @@ def telemetry(sid, data):
             # back in respose to the current telemetry data.
 
             # If in a state where want to pickup a rock send pickup command
-            if Rover.send_pickup and not Rover.picking_up:
+            if rover.send_pickup and not rover.picking_up:
                 send_pickup()
-                # Reset Rover flags
-                Rover.send_pickup = False
+                # Reset rover flags
+                rover.send_pickup = False
             else:
                 # Send commands to the rover!
-                commands = (Rover.throttle, Rover.brake, Rover.steer)
+                commands = (rover.throttle, rover.brake, rover.steer)
                 send_control(commands, out_image_string1, out_image_string2)
 
         # In case of invalid telemetry, send null commands
