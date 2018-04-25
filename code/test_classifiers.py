@@ -29,7 +29,7 @@ class TestClassifiers(unittest.TestCase):
             images.ROCK1,
             images.ROCK1_LABEL[:, :, 0])
 
-        self.assertGreater(accuracy, 0.95)
+        self.assertGreater(accuracy, 0.9)
 
 
     def test_classifier_navi(self):
@@ -41,7 +41,7 @@ class TestClassifiers(unittest.TestCase):
             images.ROCK1,
             images.ROCK1_LABEL[:, :, 1])
 
-        self.assertGreater(accuracy, 0.95)
+        self.assertGreater(accuracy, 0.9)
 
 
 if __name__ == '__main__':

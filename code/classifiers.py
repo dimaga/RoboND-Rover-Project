@@ -1,32 +1,55 @@
 #!python
 """Machine learning classifiers of pixel colors"""
-
+import glob
 import numpy as np
 
 # pylint: disable=import-error
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 from sklearn.utils import shuffle
 from sklearn.naive_bayes import GaussianNB
 from sklearn.mixture import GaussianMixture
 import images
 
-TRAINING_X = np.concatenate(
-    [images.ROCK1.reshape(-1, 3),
-     images.ROCK2.reshape(-1, 3)])
+
+def training_samples():
+    """Load all available training samples"""
+    masks = glob.glob('../calibration_images/*_mask.png')
+
+    result = []
+    for mask in masks:
+        img_path = mask.replace("_mask.png", ".jpg")
+        img = mpimg.imread(img_path)
+        label_img = mpimg.imread(mask)
+
+        result.append((img, label_img))
+
+    return result
+
+
+TRAINING_SAMPLES = training_samples()
+
+NON_EMPTY = np.concatenate([
+    np.logical_or(
+        y[:, :, 0] != 0,
+        np.logical_or(
+            y[:, :, 1] != 0,
+            y[:, :, 2] != 0)).ravel() for _, y in TRAINING_SAMPLES])
+
+TRAINING_X = np.concatenate([
+    x.reshape(-1, 3) for x, _ in TRAINING_SAMPLES])
 
 TRAINING_ROCKS = np.concatenate([
-    (images.ROCK1_LABEL[:, :, 0] != 0).reshape(-1),
-    (images.ROCK2_LABEL[:, :, 0] != 0).reshape(-1)])
+    (y[:, :, 0] != 0).reshape(-1) for _, y in TRAINING_SAMPLES])
 
 TRAINING_NAVI = np.concatenate([
-    (images.ROCK1_LABEL[:, :, 1] != 0).reshape(-1),
-    (images.ROCK2_LABEL[:, :, 1] != 0).reshape(-1)])
+    (y[:, :, 1] != 0).reshape(-1) for _, y in TRAINING_SAMPLES])
 
 TRAINING_X, TRAINING_ROCKS, TRAINING_NAVI = shuffle(
-    TRAINING_X,
-    TRAINING_ROCKS,
-    TRAINING_NAVI,
+    TRAINING_X[NON_EMPTY],
+    TRAINING_ROCKS[NON_EMPTY],
+    TRAINING_NAVI[NON_EMPTY],
     random_state=0)
 
 
@@ -39,7 +62,6 @@ class ClassifierNavi:
         """Construct the navigatable pixels classifier"""
         self.__cls = GaussianNB()
         self.__cls.fit(TRAINING_X, TRAINING_NAVI)
-
 
     def predict(self, img):
         """Returns ln p(color | navigatable) - ln p(color | obstacle)"""
@@ -60,16 +82,13 @@ class ClassifierRocks:
         self.__not_cls = GaussianMixture(2, random_state=0, means_init=means_init)
         self.__not_cls.fit(TRAINING_X[~TRAINING_ROCKS])
 
-
     def predict(self, img):
         """Returns ln p(color | rock) - ln p(color | not rock)"""
-        bias = 15
         input_x = img.reshape(-1, 3)
 
         score_diff = (
             self.__cls.score_samples(input_x)
-            - self.__not_cls.score_samples(input_x)
-            - bias)
+            - self.__not_cls.score_samples(input_x))
 
         return score_diff.reshape(img.shape[:2])
 

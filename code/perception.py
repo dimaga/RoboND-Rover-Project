@@ -25,21 +25,6 @@ def perception_step(rover):
     rocks = classifiers.ROCKS.predict(img)
     rocks_top = transformations.perspective_2_top(rocks)
 
-    if aligned_to_ground:
-        rover.global_conf_cur.fill(0)
-
-        cv2.warpAffine(
-            rocks_top,
-            loc_2_glob,
-            (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
-            rover.global_conf_cur)
-
-        # Clipping to prevent the map from being overconfident
-        rover.global_conf_rocks = np.clip(
-            rover.global_conf_rocks + rover.global_conf_cur,
-            -10.0,
-            100.0)
-
     navi = classifiers.NAVI.predict(img)
     navi_top = transformations.perspective_2_top(navi)
 
@@ -55,6 +40,21 @@ def perception_step(rover):
         # Clipping to prevent the map from being overconfident
         rover.global_conf_navi = np.clip(
             rover.global_conf_navi + rover.global_conf_cur,
+            -255.0,
+            255.0)
+
+    if aligned_to_ground:
+        rover.global_conf_cur.fill(0)
+
+        cv2.warpAffine(
+            rocks_top,
+            loc_2_glob,
+            (rover.global_conf_cur.shape[1], rover.global_conf_cur.shape[0]),
+            rover.global_conf_cur)
+
+        # Clipping to prevent the map from being overconfident
+        rover.global_conf_rocks = np.clip(
+            rover.global_conf_rocks + rover.global_conf_cur,
             -255.0,
             255.0)
 
