@@ -70,16 +70,23 @@ class ClassifierNavi:
 
 
 class ClassifierRocks:
-    """Gaussian Expected Maximization classifier to determine if pixels are rocks"""
+    """Gaussian Expected Maximization classifier to determine if pixels are
+    rocks"""
 
     # pylint: disable=too-few-public-methods
 
     def __init__(self):
         """Construct the rock pixels classifier"""
-        self.__cls = GaussianMixture(random_state=0).fit(TRAINING_X[TRAINING_ROCKS])
+        self.__cls = GaussianMixture(random_state=0).fit(
+            TRAINING_X[TRAINING_ROCKS])
 
         means_init = np.array([[0.0, 0.0, 0.0], [255.0, 255.0, 255.0]])
-        self.__not_cls = GaussianMixture(2, random_state=0, means_init=means_init)
+
+        self.__not_cls = GaussianMixture(
+            2,
+            random_state=0,
+            means_init=means_init)
+
         self.__not_cls.fit(TRAINING_X[~TRAINING_ROCKS])
 
     def predict(self, img):
