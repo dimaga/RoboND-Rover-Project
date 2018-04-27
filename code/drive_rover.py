@@ -1,44 +1,34 @@
-# Do the necessary imports
+#!python
+"""Main file to launch the rover brain and communicate with simulator"""
+
 import argparse
-import shutil
-import base64
-from datetime import datetime
 import os
-import cv2
-import numpy as np
-import socketio
+import shutil
+import time
+from datetime import datetime
+
+#pylint: disable=import-error
 import eventlet
 import eventlet.wsgi
-from PIL import Image
+import numpy as np
+import socketio
 from flask import Flask
-from io import BytesIO, StringIO
-import json
-import pickle
-import matplotlib.image as mpimg
-import time
 
+from decision import decision_step
 # Import functions for perception and decision making
 from perception import perception_step
-from decision import decision_step
 from supporting_functions import update_rover, create_output_images
+from images import GROUND_TRUTH_3D
 
 # Initialize socketio server and Flask application
 # (learn more at: https://python-socketio.readthedocs.io/en/latest/)
-sio = socketio.Server()
-app = Flask(__name__)
+SIO = socketio.Server()
 
-# Read in ground truth map and create 3-channel green version for overplotting
-# NOTE: images are read in by default with the origin (0, 0) in the upper left
-# and y-axis increasing downward.
-ground_truth = mpimg.imread('../calibration_images/map_bw.png')
-# This next line creates arrays of zeros in the red and blue channels
-# and puts the map into the green channel.  This is why the underlying 
-# map output looks green in the display image
-ground_truth_3d = np.dstack((ground_truth * 0, ground_truth * 255, ground_truth * 0)).astype(np.float)
-
-
-# Define RoverState() class to retain rover state parameters
 class RoverState():
+    """Define RoverState() class to retain rover state parameters"""
+
+    #pylint: disable=too-few-public-methods
+
     def __init__(self):
         self.start_time = None  # To record the start time of navigation
         self.total_time = None  # To record total duration of naviagation
@@ -52,8 +42,8 @@ class RoverState():
         self.throttle = 0  # Current throttle value
         self.brake = 0  # Current brake value
         self.nav_dir = None  # Angles of navigable terrain pixels
-        self.nav_pixels = None # Number of navigatable pixels
-        self.ground_truth = ground_truth_3d  # Ground truth worldmap
+        self.nav_pixels = None  # Number of navigatable pixels
+        self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
         self.mode = 'forward'  # Current mode (can be forward or stop)
         self.throttle_set = 0.2  # Throttle setting when accelerating
         self.brake_set = 10  # Brake setting when braking
@@ -85,56 +75,61 @@ class RoverState():
 
 
 # Initialize our rover
-rover = RoverState()
+ROVER = RoverState()
 
 # Variables to track frames per second (FPS)
 # Intitialize frame counter
-frame_counter = 0
+FRAME_COUNTER = 0
 # Initalize second counter
-second_counter = time.time()
-fps = None
+SECOND_COUNTER = time.time()
+FPS = None
+IMAGE_FOLDER = ''
 
 
-# Define telemetry function for what to do with incoming data
-@sio.on('telemetry')
-def telemetry(sid, data):
-    global frame_counter, second_counter, fps
-    frame_counter += 1
+@SIO.on('telemetry')
+def telemetry(_, data):
+    """Defines telemetry function for what to do with incoming data"""
+
+    # pylint: disable=global-statement
+
+    global FRAME_COUNTER, SECOND_COUNTER, FPS
+    FRAME_COUNTER += 1
     # Do a rough calculation of frames per second (FPS)
-    if (time.time() - second_counter) > 1:
-        fps = frame_counter
-        frame_counter = 0
-        second_counter = time.time()
-    print("Current FPS: {}".format(fps))
+    if (time.time() - SECOND_COUNTER) > 1:
+        FPS = FRAME_COUNTER
+        FRAME_COUNTER = 0
+        SECOND_COUNTER = time.time()
+    print("Current FPS: {}".format(FPS))
 
     if data:
-        global rover
+        global ROVER
         # Initialize / update rover with current telemetry
-        rover, image = update_rover(rover, data)
+        ROVER, image = update_rover(ROVER, data)
 
-        if np.isfinite(rover.vel):
+        if np.isfinite(ROVER.vel):
 
-            # Execute the perception and decision steps to update the rover's state
-            rover = perception_step(rover)
-            rover = decision_step(rover)
+            # Execute the perception and decision steps to update the rover's
+            # state
+            ROVER = perception_step(ROVER)
+            ROVER = decision_step(ROVER)
 
             # Create output images to send to server
-            out_image_string1, out_image_string2 = create_output_images(rover)
+            out_image_string1, out_image_string2 = create_output_images(ROVER)
 
-            # The action step!  Send commands to the rover!
+            # The action step!  Send commands to the ROVER!
 
             # Don't send both of these, they both trigger the simulator
             # to send back new telemetry so we must only send one
             # back in respose to the current telemetry data.
 
             # If in a state where want to pickup a rock send pickup command
-            if rover.send_pickup and not rover.picking_up:
+            if ROVER.send_pickup and not ROVER.picking_up:
                 send_pickup()
-                # Reset rover flags
-                rover.send_pickup = False
+                # Reset ROVER flags
+                ROVER.send_pickup = False
             else:
-                # Send commands to the rover!
-                commands = (rover.throttle, rover.brake, rover.steer)
+                # Send commands to the ROVER!
+                commands = (ROVER.throttle, ROVER.brake, ROVER.steer)
                 send_control(commands, out_image_string1, out_image_string2)
 
         # In case of invalid telemetry, send null commands
@@ -143,30 +138,37 @@ def telemetry(sid, data):
             # Send zeros for throttle, brake and steer and empty images
             send_control((0, 0, 0), '', '')
 
-        # If you want to save camera images from autonomous driving specify a path
+        # To save camera images from autonomous driving, specify a path
         # Example: $ python drive_rover.py image_folder_path
         # Conditional to save image frame if folder was specified
-        if args.image_folder != '':
+
+        global IMAGE_FOLDER
+        if IMAGE_FOLDER != '':
             timestamp = datetime.utcnow().strftime('%Y_%m_%d_%H_%M_%S_%f')[:-3]
-            image_filename = os.path.join(args.image_folder, timestamp)
+            image_filename = os.path.join(IMAGE_FOLDER, timestamp)
             image.save('{}.jpg'.format(image_filename))
 
     else:
-        sio.emit('manual', data={}, skip_sid=True)
+        SIO.emit('manual', data={}, skip_sid=True)
 
 
-@sio.on('connect')
-def connect(sid, environ):
+@SIO.on('connect')
+def connect(sid, _):
+    """Connects to simulator"""
+
     print("connect ", sid)
     send_control((0, 0, 0), '', '')
     sample_data = {}
-    sio.emit(
+
+    SIO.emit(
         "get_samples",
         sample_data,
         skip_sid=True)
 
 
 def send_control(commands, image_string1, image_string2):
+    """Sends commands to the Rover"""
+
     # Define commands to be sent to the rover
     data = {
         'throttle': commands[0].__str__(),
@@ -175,50 +177,65 @@ def send_control(commands, image_string1, image_string2):
         'inset_image1': image_string1,
         'inset_image2': image_string2,
     }
+
     # Send commands via socketIO server
-    sio.emit(
+    SIO.emit(
         "data",
         data,
         skip_sid=True)
+
     eventlet.sleep(0)
 
 
-# Define a function to send the "pickup" command
 def send_pickup():
+    """Sends the "pickup" command to the Rover"""
+
     print("Picking up")
     pickup = {}
-    sio.emit(
+    SIO.emit(
         "pickup",
         pickup,
         skip_sid=True)
+
     eventlet.sleep(0)
 
 
-if __name__ == '__main__':
+def main():
+    """The method is called upon the module launch"""
+
     parser = argparse.ArgumentParser(description='Remote Driving')
+
     parser.add_argument(
         'image_folder',
         type=str,
         nargs='?',
         default='',
-        help='Path to image folder. This is where the images from the run will be saved.'
+        help='Path to image folder, where the images from the run are saved.'
     )
     args = parser.parse_args()
 
+    # pylint: disable=global-statement
+    global IMAGE_FOLDER
+    IMAGE_FOLDER = args.image_folder
+
     # os.system('rm -rf IMG_stream/*')
-    if args.image_folder != '':
-        print("Creating image folder at {}".format(args.image_folder))
-        if not os.path.exists(args.image_folder):
-            os.makedirs(args.image_folder)
+    if IMAGE_FOLDER != '':
+        print("Creating image folder at {}".format(IMAGE_FOLDER))
+        if not os.path.exists(IMAGE_FOLDER):
+            os.makedirs(IMAGE_FOLDER)
         else:
-            shutil.rmtree(args.image_folder)
-            os.makedirs(args.image_folder)
+            shutil.rmtree(IMAGE_FOLDER)
+            os.makedirs(IMAGE_FOLDER)
         print("Recording this run ...")
     else:
         print("NOT recording this run ...")
 
     # wrap Flask application with socketio's middleware
-    app = socketio.Middleware(sio, app)
+    app = socketio.Middleware(SIO, Flask(__name__))
 
     # deploy as an eventlet WSGI server
     eventlet.wsgi.server(eventlet.listen(('', 4567)), app)
+
+
+if __name__ == '__main__':
+    main()

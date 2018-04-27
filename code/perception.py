@@ -9,7 +9,7 @@ import control
 
 
 def perception_step(rover):
-    """Perform perception steps to update rover()"""
+    """Perform perception steps to update rover"""
 
     aligned_to_ground = (
         abs(transformations.warp_angle180(rover.pitch) < 0.5
