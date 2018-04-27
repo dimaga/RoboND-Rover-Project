@@ -15,6 +15,7 @@ import socketio
 from flask import Flask
 
 from decision import decision_step
+
 # Import functions for perception and decision making
 from perception import perception_step
 from supporting_functions import update_rover, create_output_images
@@ -24,27 +25,71 @@ from images import GROUND_TRUTH_3D
 # (learn more at: https://python-socketio.readthedocs.io/en/latest/)
 SIO = socketio.Server()
 
-class RoverState():
-    """Define RoverState() class to retain rover state parameters"""
+# pylint: disable=too-few-public-methods
 
-    #pylint: disable=too-few-public-methods
+class Perception():
+    """The class retains perception rover parameters"""
+
+    def __init__(self):
+        self.img = None  # Current camera image
+        self.pos = None  # Current position (x, y)
+        self.yaw_deg = None  # Current yaw angle
+        self.pitch_deg = None  # Current pitch angle
+        self.roll_deg = None  # Current roll angle
+        self.vel = None  # Current velocity
+        self.near_sample = 0  # Will be set to telemetry data["near_sample"]
+
+
+class Control():
+    """The class retains control rover parameters"""
+
+    def __init__(self):
+        self.steer = 0  # Current steering angle
+        self.throttle = 0  # Current throttle value
+        self.brake = 0  # Current brake value
+        self.picking_up = False # Is the stone being picked up
+        self.send_pickup = False  # Set to True to trigger rock pickup
+
+
+class Decision():
+    """The class retains rover parameters for decision making"""
+
+    def __init__(self):
+        self.nav_dir = None  # Angles of navigable terrain pixels
+        self.nav_pixels = None  # Number of navigatable pixels
+        self.mode = 'forward'  # Current mode (can be forward or stop)
+
+
+class Map():
+    """The class retains map data"""
+
+    def __init__(self):
+        self.global_conf_rocks = np.zeros((200, 200)).astype(np.float)
+        self.global_conf_navi = np.zeros((200, 200)).astype(np.float)
+        self.global_conf_cur = np.zeros((200, 200)).astype(np.float)
+
+        self.vision_image = np.zeros((160, 320, 3), dtype=np.float)
+        self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
+
+        self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
+
+
+class Statistics():
+    """The class retains statistics parameters for decision making"""
 
     def __init__(self):
         self.start_time = None  # To record the start time of navigation
         self.total_time = None  # To record total duration of naviagation
-        self.img = None  # Current camera image
-        self.pos = None  # Current position (x, y)
-        self.yaw = None  # Current yaw angle
-        self.pitch = None  # Current pitch angle
-        self.roll = None  # Current roll angle
-        self.vel = None  # Current velocity
-        self.steer = 0  # Current steering angle
-        self.throttle = 0  # Current throttle value
-        self.brake = 0  # Current brake value
-        self.nav_dir = None  # Angles of navigable terrain pixels
-        self.nav_pixels = None  # Number of navigatable pixels
-        self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
-        self.mode = 'forward'  # Current mode (can be forward or stop)
+
+        self.samples_pos = None  # To store the actual sample positions
+        self.samples_to_find = 0  # To store the initial count of samples
+        self.samples_collected = 0  # To count the number of samples collected
+
+
+class Constants():
+    """The class retains boundary values for some of the rover parameters"""
+
+    def __init__(self):
         self.throttle_set = 0.2  # Throttle setting when accelerating
         self.brake_set = 10  # Brake setting when braking
         # The stop_forward and go_forward fields below represent total count
@@ -54,24 +99,18 @@ class RoverState():
         self.stop_forward = 50  # Threshold to initiate stopping
         self.go_forward = 500  # Threshold to go forward again
         self.max_vel = 2  # Maximum velocity (meters/second)
-        # Image output from perception step
-        # Update this image to display your intermediate analysis steps
-        # on screen in autonomous mode
-        self.vision_image = np.zeros((160, 320, 3), dtype=np.float)
-        # Worldmap
-        # Update this image with the positions of navigable terrain
-        # obstacles and rock samples
-        self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
-        self.global_conf_rocks = np.zeros((200, 200)).astype(np.float)
-        self.global_conf_navi = np.zeros((200, 200)).astype(np.float)
-        self.global_conf_cur = np.zeros((200, 200)).astype(np.float)
-        self.samples_pos = None  # To store the actual sample positions
-        self.samples_to_find = 0  # To store the initial count of samples
-        self.samples_located = 0  # To store number of samples located on map
-        self.samples_collected = 0  # To count the number of samples collected
-        self.near_sample = 0  # Will be set to telemetry value data["near_sample"]
-        self.picking_up = 0  # Will be set to telemetry value data["picking_up"]
-        self.send_pickup = False  # Set to True to trigger rock pickup
+
+
+class RoverState():
+    """The class retains all rover parameters"""
+
+    def __init__(self):
+        self.perception = Perception()
+        self.control = Control()
+        self.decision = Decision()
+        self.map = Map()
+        self.statistics = Statistics()
+        self.constants = Constants()
 
 
 # Initialize our rover
@@ -106,7 +145,7 @@ def telemetry(_, data):
         # Initialize / update rover with current telemetry
         ROVER, image = update_rover(ROVER, data)
 
-        if np.isfinite(ROVER.vel):
+        if np.isfinite(ROVER.perception.vel):
 
             # Execute the perception and decision steps to update the rover's
             # state
@@ -123,13 +162,18 @@ def telemetry(_, data):
             # back in respose to the current telemetry data.
 
             # If in a state where want to pickup a rock send pickup command
-            if ROVER.send_pickup and not ROVER.picking_up:
+            if ROVER.control.send_pickup and not ROVER.control.picking_up:
                 send_pickup()
                 # Reset ROVER flags
-                ROVER.send_pickup = False
+                ROVER.control.send_pickup = False
             else:
                 # Send commands to the ROVER!
-                commands = (ROVER.throttle, ROVER.brake, ROVER.steer)
+
+                commands = (
+                    ROVER.control.throttle,
+                    ROVER.control.brake,
+                    ROVER.control.steer)
+
                 send_control(commands, out_image_string1, out_image_string2)
 
         # In case of invalid telemetry, send null commands
@@ -192,6 +236,7 @@ def send_pickup():
 
     print("Picking up")
     pickup = {}
+
     SIO.emit(
         "pickup",
         pickup,
