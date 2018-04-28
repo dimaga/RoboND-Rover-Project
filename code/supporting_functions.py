@@ -33,6 +33,7 @@ def update_rover(rover, data):
 
         samples_xpos = np.int_([convert_to_float(pos.strip())
                                 for pos in data["samples_x"].split(';')])
+
         samples_ypos = np.int_([convert_to_float(pos.strip())
                                 for pos in data["samples_y"].split(';')])
 
@@ -96,7 +97,16 @@ def update_rover(rover, data):
 def create_output_images(rover):
     """Creates display output given worldmap results"""
 
-    # Create a scaled map for plotting and clean up obs/nav pixels a bit
+    map_add, plotmap, samples_located = create_output_map(rover)
+
+    output_statistics(map_add, rover, samples_located, plotmap)
+
+    return pack_to_strings(map_add, rover)
+
+
+def create_output_map(rover):
+    """Create a scaled map for plotting and clean up obs/nav pixels a bit"""
+
     if np.max(rover.map.worldmap[:, :, 2]) > 0:
         nav_pix = rover.map.worldmap[:, :, 2] > 0
 
@@ -116,22 +126,27 @@ def create_output_images(rover):
         obstacle = rover.map.worldmap[:, :, 0]
 
     likely_nav = navigable >= obstacle
+
     obstacle[likely_nav] = 0
+
     plotmap = np.zeros_like(rover.map.worldmap)
     plotmap[:, :, 0] = obstacle
     plotmap[:, :, 2] = navigable
     plotmap = plotmap.clip(0, 255)
+
     # Overlay obstacle and navigable terrain map with ground truth map
     map_add = cv2.addWeighted(plotmap, 1, rover.map.ground_truth, 0.5, 0)
 
     # Check whether any rock detections are present in worldmap
     rock_world_pos = rover.map.worldmap[:, :, 1].nonzero()
+
     # If there are, we'll step through the known sample positions
     # to confirm whether detections are real
     samples_located = 0
-    if rock_world_pos[0].any():
 
+    if rock_world_pos[0].any():
         rock_size = 2
+
         for idx in range(len(rover.statistics.samples_pos[0])):
             test_rock_x = rover.statistics.samples_pos[0][idx]
             test_rock_y = rover.statistics.samples_pos[1][idx]
@@ -150,6 +165,15 @@ def create_output_images(rover):
                     test_rock_y - rock_size:test_rock_y + rock_size,
                     test_rock_x - rock_size:test_rock_x + rock_size,
                     :] = 255
+
+    # Flip the map for plotting so that the y-axis points upward in the display
+    map_add = np.flipud(map_add).astype(np.float32)
+
+    return map_add, plotmap, samples_located
+
+
+def output_statistics(map_add, rover, samples_located, plotmap):
+    """Output some statistics on the map results"""
 
     # Calculate some statistics on the map results
     # First get the total number of pixels in the navigable terrain map
@@ -173,65 +197,54 @@ def create_output_images(rover):
         fidelity = round(100 * good_nav_pix / (tot_nav_pix), 1)
     else:
         fidelity = 0
-    # Flip the map for plotting so that the y-axis points upward in the display
-    map_add = np.flipud(map_add).astype(np.float32)
 
     # Add some text about map and rock sample detection results
-    cv2.putText(
-        map_add,
-        "Time: " + str(np.round(rover.statistics.total_time, 1)) + ' s',
-        (0, 10),
+    font_params = (
         cv2.FONT_HERSHEY_COMPLEX,
         0.4,
         (255, 255, 255),
         1)
+
+    cv2.putText(
+        map_add,
+        "Time: " + str(np.round(rover.statistics.total_time, 1)) + ' s',
+        (0, 10),
+        *font_params)
 
     cv2.putText(
         map_add,
         "Mapped: " + str(perc_mapped) + '%',
         (0, 25),
-        cv2.FONT_HERSHEY_COMPLEX,
-        0.4,
-        (255, 255, 255),
-        1)
+        *font_params)
 
     cv2.putText(
         map_add,
         "Fidelity: " + str(fidelity) + '%',
         (0, 40),
-        cv2.FONT_HERSHEY_COMPLEX,
-        0.4,
-        (255, 255, 255),
-        1)
+        *font_params)
 
     cv2.putText(
         map_add,
         "Rocks",
         (0, 55),
-        cv2.FONT_HERSHEY_COMPLEX,
-        0.4,
-        (255, 255, 255),
-        1)
+        *font_params)
 
     cv2.putText(
         map_add,
         "  Located: " + str(samples_located),
         (0, 70),
-        cv2.FONT_HERSHEY_COMPLEX,
-        0.4,
-        (255, 255, 255),
-        1)
+        *font_params)
 
     cv2.putText(
         map_add,
         "  Collected: " + str(rover.statistics.samples_collected),
         (0, 85),
-        cv2.FONT_HERSHEY_COMPLEX,
-        0.4,
-        (255, 255, 255),
-        1)
+        *font_params)
 
-    # Convert map and vision image to base64 strings for sending to server
+
+def pack_to_strings(map_add, rover):
+    """Convert map and vision image to base64 strings for sending to server"""
+
     pil_img = Image.fromarray(map_add.astype(np.uint8))
     buff = BytesIO()
     pil_img.save(buff, format="JPEG")
