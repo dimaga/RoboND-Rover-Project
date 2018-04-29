@@ -19,11 +19,21 @@ POINTS_PERSPECTIVE = np.float32([
     [118, 96]
 ])
 
+TOP_WIDTH = WIDTH
+TOP_HEIGHT = HEIGHT // 2
+
 POINTS_TOP = np.float32([
-    [0.5 * (WIDTH - PIXELS_PER_METER), HEIGHT - BOTTOM_OFFSET],
-    [0.5 * (WIDTH + PIXELS_PER_METER), HEIGHT - BOTTOM_OFFSET],
-    [0.5 * (WIDTH + PIXELS_PER_METER), HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET],
-    [0.5 * (WIDTH - PIXELS_PER_METER), HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET]
+    [0.5 * (TOP_WIDTH - PIXELS_PER_METER),
+     TOP_HEIGHT - BOTTOM_OFFSET],
+
+    [0.5 * (TOP_WIDTH + PIXELS_PER_METER),
+     TOP_HEIGHT - BOTTOM_OFFSET],
+
+    [0.5 * (TOP_WIDTH + PIXELS_PER_METER),
+     TOP_HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET],
+
+    [0.5 * (TOP_WIDTH - PIXELS_PER_METER),
+     TOP_HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET]
 ])
 
 PERSPECTIVE_2_TOP = cv2.getPerspectiveTransform(POINTS_PERSPECTIVE, POINTS_TOP)
@@ -35,14 +45,14 @@ def perspective_2_top(img):
     warped = cv2.warpPerspective(
         img,
         PERSPECTIVE_2_TOP,
-        (img.shape[1], img.shape[0]))  # keep same size as input image
+        (TOP_WIDTH, TOP_HEIGHT))
 
     return warped
 
 
 LOCAL_2_ROVER = np.array([
-    [0.0, -1.0, HEIGHT],
-    [-1.0, 0.0, WIDTH * 0.5]], np.float32)
+    [0.0, -1.0, TOP_HEIGHT],
+    [-1.0, 0.0, TOP_WIDTH * 0.5]], np.float32)
 
 
 def local_2_global(xpos, ypos, yaw_deg):
@@ -62,7 +72,7 @@ def local_2_global(xpos, ypos, yaw_deg):
     return rover_2_global.dot(local_2_rover_3x3)
 
 
-IMG_ROWS, IMG_COLS = np.indices((HEIGHT, WIDTH))
+IMG_ROWS, IMG_COLS = np.indices((TOP_HEIGHT, TOP_WIDTH))
 IMG_ROWS = IMG_ROWS.ravel()
 IMG_COLS = IMG_COLS.ravel()
 IMG_ONES = np.ones_like(IMG_COLS)

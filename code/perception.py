@@ -33,33 +33,8 @@ def perception_step(rover):
     r_map = rover.map
 
     if aligned_to_ground:
-        r_map.global_conf_cur.fill(0)
-
-        cv2.warpAffine(
-            navi_top,
-            loc_2_glob,
-            (r_map.global_conf_cur.shape[1], r_map.global_conf_cur.shape[0]),
-            r_map.global_conf_cur)
-
-        # Clipping to prevent the map from being overconfident
-        r_map.global_conf_navi = np.clip(
-            r_map.global_conf_navi + r_map.global_conf_cur,
-            -255.0,
-            255.0)
-
-        r_map.global_conf_cur.fill(0)
-
-        cv2.warpAffine(
-            rocks_top,
-            loc_2_glob,
-            (r_map.global_conf_cur.shape[1], r_map.global_conf_cur.shape[0]),
-            r_map.global_conf_cur)
-
-        # Clipping to prevent the map from being overconfident
-        r_map.global_conf_rocks = np.clip(
-            r_map.global_conf_rocks + r_map.global_conf_cur,
-            -255.0,
-            255.0)
+        update_global(loc_2_glob, r_map, navi_top, r_map.global_conf_navi)
+        update_global(loc_2_glob, r_map, rocks_top, r_map.global_conf_rocks)
 
         rocks_mask = r_map.global_conf_rocks > 0
 
@@ -78,8 +53,27 @@ def perception_step(rover):
     decision.nav_pixels = np.sum((navi_top > 0).ravel())
     decision.nav_dir = control.navi_direction(navi_top, False)
 
-    r_map.vision_image[:, :, 0] = 255 * (navi_top < 0)
-    r_map.vision_image[:, :, 1] = 255 * (rocks_top > 0)
-    r_map.vision_image[:, :, 2] = 255 * (navi_top > 0)
+    min_y = navi_top.shape[0] - r_map.vision_image.shape[0]
+
+    r_map.vision_image[min_y:, :, 0] = 255 * (navi_top < 0)
+    r_map.vision_image[min_y:, :, 1] = 255 * (rocks_top > 0)
+    r_map.vision_image[min_y:, :, 2] = 255 * (navi_top > 0)
 
     return rover
+
+
+def update_global(loc_2_glob, r_map, local_map, global_map):
+    """Updates global confidence map from local map"""
+
+    r_map.global_conf_cur.fill(0)
+
+    cv2.warpAffine(
+        local_map,
+        loc_2_glob,
+        (r_map.global_conf_cur.shape[1], r_map.global_conf_cur.shape[0]),
+        r_map.global_conf_cur)
+
+    global_map += r_map.global_conf_cur
+
+    # Clipping to prevent the map from being overconfident
+    np.clip(global_map, -255.0, 255.0, out=global_map)
