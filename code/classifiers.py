@@ -89,6 +89,7 @@ class ClassifierRocks:
 
         self.__not_cls.fit(TRAINING_X[~TRAINING_ROCKS])
 
+
     def predict(self, img):
         """Returns ln p(color | rock) - ln p(color | not rock)"""
         input_x = img.reshape(-1, 3)

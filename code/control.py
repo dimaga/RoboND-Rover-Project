@@ -26,7 +26,6 @@ def navi_direction(navi_top_view, distract_from_walls):
         result /= np.linalg.norm(result)
 
     np.nan_to_num(result, False)
-
     return result
 
 
