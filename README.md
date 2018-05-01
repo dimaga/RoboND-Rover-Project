@@ -52,8 +52,13 @@ You're reading it!
 ### Notebook Analysis
 #### 1. Run the functions provided in the notebook on test images (first with the test data provided, next on data you have recorded). Add/modify functions to allow for color selection of obstacles and rock samples.
 
-Instead of providing explicit thresholds for color selection, I have trained
-machine learning classifiers from sklearn library against labelled images:
+Instead of comparing colors against explicit thresholds, I have tought
+a few machine learning classifiers from sklearn library with labelled images.
+Such an approach should scale better to realistic environment, where color
+classification can also be substituted with fully convolutional deep neural
+network. Also, machine learning relieved me from tedious work of manually
+adjusting the thresholds, which includes more of a black art rather than
+engineering
 
 [example_rock1]: ./calibration_images/example_rock1.jpg
 [example_rock1_mask]: ./calibration_images/example_rock1_mask.png
@@ -61,6 +66,13 @@ machine learning classifiers from sklearn library against labelled images:
 ![example_rock1]
 ![example_rock1_mask]
 
+In my labelled images, like the one above, blue values of 255 highlight
+obstacles; green values of 255 highlight navigable terrain; and red values of
+255 highlight rock pixels. Additionally, I mark sky areas and areas that are
+boundaries between objects with black color, meaning that their class cannot be
+determined robustly. I let machine learning algorithms smooth these areas in the
+output the way they prefer.
+ 
 `GaussianMixture` classifier is trained to detect rock pixels. `GaussianNB` is
 trained to detect navigable pixels.
 
@@ -70,36 +82,57 @@ ratios to smoothly update confidence maps. Details are explained in additional
 cells and code comments inside the
 [notebook](./code/Rover_Project_Test_Notebook.ipynb).
 
-If a confidence value is close to zero, that means the class of the pixel is
-unknown. The higher a positive value is, the more confidence there is that the
-pixel belongs to the positive class (e.g., navigable terrain or a rock sample to
-be collected). The lower a negative value is, the more confidence there is  that
-the pixel belongs to the negative class (e.g., an obstacle or 'a lack of rock
-object'). 
+A confidence value close to zero means that the class of a pixel is unknown.
+The higher a positive value is, the more confidence there is that the pixel
+belongs to a positive class (e.g., navigable terrain or a rock sample to be
+collected). The lower a negative value is, the more confidence there is that the
+pixel belongs to a negative class (e.g., an obstacle or 'a lack of rock
+object').
+
+[classification]: ./misc/classification.png
+![classification]
 
 #### 2. Populate the `process_image()` function with the appropriate analysis steps to map pixels identifying navigable terrain, obstacles and rock samples into a worldmap.  Run `process_image()` on your test data using the `moviepy` functions provided to create video output of your result.
 
-Confidence values, represented by log-probability ratios, are extracted from the
-original image, and then projected into the top view. This allows to deal more
-naturally with pixels in the top view, not covered by the original
-view: they just hold zeros, which means their status is unknown. Also,
-confidence values, corresponding to distant areas, are mixed together with
-billinear filtering. Therefore, if pixels of two classes in the original view
-are located cloase together, their mixed confidence values will have smaller
-magnitude in the top view, meaning that they are less likely belong to a
-particular class.
+Confidence values are first extracted from the original image by sklearn
+algorithms. Then, they are projected into the top view by
+`cv2.warpPerspective()`. This allows me to deal more naturally with pixels in
+the top view, not covered by the original view: they initially hold zeros, which
+means their class is unknown.
+
+Confidence values, corresponding to distant areas, are mixed together with
+billinear filtering implemented inside `cv2.warpPerspective()`. Therefore,
+if two pixels of two opposite classes in the original view are projected into
+the same pixel in the top view, the magnitude of their bilinear mixture will be
+smaller, meaning that the pixel is less likely belong to any particular class.
+This also leads to natural processing of higher uncertainty for distant values.
 
 Confidence values of the local map are transformed into the global confidence
 map space with `cv2.warpAffine()` function. In Python code, only the entries
 of the transformation matrix are calculated, and all per-pixel operations are
 dedicated to fast C++ implementation of `cv2.warpAffine()`.
 
-After the transformation, local map confidence values are added to the
-corresponding global confidence map values. Therefore, zeros from the local map
-leave corresponding values of the global confidence map unchanged.
+[classification_top]: ./misc/classification_top.png
+![classification_top]
 
-After each update, global confidence map pixels are clipped to be in the region
-of [-255, 255] so as to prevent overconfidence and numerical issues.
+In the right picture above, gray pixels hold zero values, black pixels are
+negative and white pixels are positive.
+
+After the transformation, local map confidence values are added to the
+corresponding global confidence map values. As a result, zeros from the local
+map leave corresponding values of the global confidence map unchanged.
+
+After each update, global confidence map pixels are clipped to the range 
+[-255, 255] so as to prevent overconfidence and numerical issues.
+
+All the code of the notebook is cleaned up and refactored to follow PEP-8
+standard.
+
+The result of the lab can be seen in the picture below:
+
+[lab_result]: ./misc/lab_result.png
+![lab_result]
+
 
 ### Autonomous Navigation and Mapping
 
