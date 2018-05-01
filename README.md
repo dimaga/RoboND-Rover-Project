@@ -136,13 +136,100 @@ The result of the lab can be seen in the picture below:
 
 ### Autonomous Navigation and Mapping
 
+In order to learn better how the starter code works, I have refactored it. All
+pylint warnings have been resolved or disabled. Code duplications are removed by
+extracting corresponding methods and modules.
+
+Before adding any new code, I prepared unit tests. I am a big fan of Test Driven
+Development.
+
 #### 1. Fill in the `perception_step()` (at the bottom of the `perception.py` script) and `decision_step()` (in `decision.py`) functions in the autonomous mapping scripts and an explanation is provided in the writeup of how and why these functions were modified as they were.
 
+`perception_step()` is based on machine learning classifiers, similar to
+notebook. So, I have just copy-pasted the notebook code and applied
+recommendations, encountered in the manual and youtube videos:
+
+* The global confidence map is only updated when the both the roll and the pitch
+rover angles are close to zero
+
+* Only the bottom half of the original top view is used in order to exclude
+distant pixels, which are subject to noise
+
+In the notebook lab, I took the attempt to deal with noise more naturally by
+applying machine learning algorithms with probabilistic filters. However, it
+turned out not to be enough due to the following reasons:
+
+1. Mountains do not lay in the ground plane. Therefore, they may be projected
+into the top view incorrectly, occluding navigable terrain and rock pixels
+behind them.
+
+2. Probabilistic filters are built on the the assumptions that all the
+adjacent measurements are independent. However, in our case, measurements coming
+from the same camera position from the synthetic environment are very dependent
+
+Besides enhancements recommended by other people, I have added a `cost_map`
+array, which implements a basic version of Value Iteration algorithm. `cost_map`
+is used instead of navigable map to control the steering angle of the rover.
+
+The purpose of the `cost_map` is to have the rover explore the environment
+rather than aimlessly follow the navigable terrain. Inside the `cost_map`,
+values with low absolute confidenve value have the highest rank. All the other
+values are blurred with a `cv2.boxFilter()`. The `cost_map` is created to be
+the size of the global map. For the given location of the rover, its patch
+is transformed into the top view area of the local rover reference frame, and
+masked with obstacles.  
+
+In my current implementation, I haven't changed the logic of decision_step(),
+adjusting only stop and go thresholds.
 
 #### 2. Launching in autonomous mode your rover can navigate and map autonomously.  Explain your results and how you might improve them in your writeup.
 
-**Note: running the simulator with different choices of resolution and graphics quality may produce different results, particularly on different machines!  Make a note of your simulator settings (resolution and graphics quality set on launch) and frames per second (FPS output to terminal by `drive_rover.py`) in your writeup when you submit the project so your reviewer can reproduce your results.**
+During my testing, I launched the simulator in 1024x768 with Good Graphics
+Quality on my MacBook Pro, with 2.6 Ghz Intel Core i7 processor.
 
-Here I'll talk about the approach I took, what techniques I used, what worked and why, where the pipeline might fail and how I might improve it if I were going to pursue this project further.
+The rover was able to cover the area more than 40% map with fidelity of higher
+than 60%, finding a few rock samples a long the way, which fulfills the passing
+submission criteria for this project.
 
+![final_result]
 
+The rover may sometimes get stuck in the mountaneous rocks, or roll circles,
+never exploring the rest of the map. Without the `cost_map`, the area of
+exploration was much smaller. 
+
+![got_stuck]
+
+Here are the techniques that could be used to further improve the quality of the
+rover:
+
+* Implement more advanced behaviors with a Behavior Tree
+    * Detect by analyzing position of the rover if it is stuck somewhere so as
+    to initiate unstuck behavior with a set of random actions
+
+    * Add a goal to search for rocks or initial position to `cost_map`. Let the
+    rover collect rocks and return home with a more complex Behavior Tree
+    
+* Detect rocks in the original view with a blob detector. Calculate distances 
+and directions to them from positions and sizes of the blobs. Project restored
+3D coordinates in the top view to more accurately position the rocks. Since
+rocks do not belong to the ground plane, it causes problems with
+`warpPerspective()` transformations based on homography matrix
+
+* Project only obstacle boundaries into the top view rather than the whole area.
+Most obstacles are also not part of the ground plane, which is the source of
+errors. After this fix, the top view area of the navigable terrain could be
+extended. Naive implementation of this approach failed: obstacle boundaries
+turned out to be very thin so that they were quickly washed out by misdetected
+navigable pixels
+
+* Apply more advanced control of the rover so that it follows the `cost_map` in
+a more optimal way. Consider delays in between steering command and actual
+position applied with a PID or MPC controllers
+
+* Since the time the picture from the rover camera is taken may not exactly
+correspond to roll and pitch values, analyze how roll and pitch values change.
+Apply local confidence value to a global one only if roll and pitch values
+remain constant for a while
+
+* Apply more advanced transformation matrix in `cv2.warpPerspective` to deal
+with non-zero pitch and roll angles correctly
