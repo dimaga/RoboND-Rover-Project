@@ -149,7 +149,7 @@ Development.
 notebook. So, I have just copy-pasted the notebook code and applied
 recommendations, encountered in the manual and youtube videos:
 
-* The global confidence map is only updated when the both the roll and the pitch
+* The global confidence map is only updated when both the roll and the pitch
 rover angles are close to zero
 
 * Only the bottom half of the original top view is used in order to exclude
@@ -179,7 +179,7 @@ have the highest rank. All the other values are blurred with a
 `cv2.boxFilter()`. 
 
 For the given location of the rover, its patch is transformed into the top view
-area of the local rover reference frame, and masked with obstacles.  
+area of the local rover reference frame, and is masked with obstacles.  
 
 In my current implementation, I haven't changed the logic of `decision_step()`,
 adjusting only stop and go thresholds.
@@ -235,3 +235,7 @@ for a while. That is test that pitch and roll derivatives are also close to zero
 
 * Apply more advanced transformation matrix in `cv2.warpPerspective` to deal
 with arbitrary pitch and roll angle values
+
+* Do not update global confidence map with similar measurements that come from
+stationary rover position. Apply changes only when the rover sufficiently
+changes its existing position or orientation
