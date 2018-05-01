@@ -193,12 +193,14 @@ The rover was able to cover the area of more than 40% map with fidelity of
 higher than 60%, finding a few rock samples a long the way, which meets the
 passing submission criteria for this project.
 
+[final_result]: ./misc/final_result.png
 ![final_result]
 
 The rover may sometimes get stuck in the mountaneous rocks, or roll loops,
 never exploring the rest of the map. Without the `cost_map`, the area of
 exploration would be much smaller, though. 
 
+[got_stuck]: ./misc/got_stuck.png
 ![got_stuck]
 
 Here are the techniques that could be used to further improve the quality of the
