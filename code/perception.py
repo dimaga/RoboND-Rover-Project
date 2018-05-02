@@ -54,8 +54,13 @@ def perception_step(rover):
 
     direction_map = to_local_map(decision.cost_map, loc_2_glob)
     navi_map = to_local_map(r_map.global_conf_navi, loc_2_glob)
-    direction_map[:] *= np.logical_or(navi_map > 0, navi_top > 0)
-    direction_map[:] += np.logical_or(navi_map < 0, navi_top < 0) * -255.0
+
+    obstacles = np.logical_or(navi_map < 0, navi_top < 0)
+    navigable = np.logical_or(navi_map > 0, navi_top > 0)
+    np.logical_and(~obstacles, navigable, out=navigable)
+
+    direction_map[:] *= navigable
+    direction_map[:] += obstacles * -255.0
 
     # Prefer forward pixels over backward to break a tie of contrary decisions
     direction_map.ravel()[:] *= \
