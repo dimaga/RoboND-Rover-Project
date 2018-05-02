@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
-from images import WIDTH, HEIGHT, GRID
+from images import HEIGHT, GRID
 
 PIXELS_PER_METER = 10.0
 BOTTOM_OFFSET = 6
@@ -19,21 +19,23 @@ POINTS_PERSPECTIVE = np.float32([
     [118, 96]
 ])
 
-TOP_WIDTH = WIDTH
-TOP_HEIGHT = HEIGHT // 2
+TOP_WIDTH = HEIGHT
+TOP_HEIGHT = HEIGHT
+TOP_CENTER_X = TOP_WIDTH // 2
+TOP_CENTER_Y = TOP_HEIGHT // 2
 
 POINTS_TOP = np.float32([
-    [0.5 * (TOP_WIDTH - PIXELS_PER_METER),
-     TOP_HEIGHT - BOTTOM_OFFSET],
+    [TOP_CENTER_X - 0.5 * PIXELS_PER_METER,
+     TOP_CENTER_Y + 0.5 * PIXELS_PER_METER - BOTTOM_OFFSET],
 
-    [0.5 * (TOP_WIDTH + PIXELS_PER_METER),
-     TOP_HEIGHT - BOTTOM_OFFSET],
+    [TOP_CENTER_X + 0.5 * PIXELS_PER_METER,
+     TOP_CENTER_Y + 0.5 * PIXELS_PER_METER - BOTTOM_OFFSET],
 
-    [0.5 * (TOP_WIDTH + PIXELS_PER_METER),
-     TOP_HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET],
+    [TOP_CENTER_X + 0.5 * PIXELS_PER_METER,
+     TOP_CENTER_Y - 0.5 * PIXELS_PER_METER - BOTTOM_OFFSET],
 
-    [0.5 * (TOP_WIDTH - PIXELS_PER_METER),
-     TOP_HEIGHT - PIXELS_PER_METER - BOTTOM_OFFSET]
+    [TOP_CENTER_X - 0.5 * PIXELS_PER_METER,
+     TOP_CENTER_Y - 0.5 * PIXELS_PER_METER - BOTTOM_OFFSET],
 ])
 
 PERSPECTIVE_2_TOP = cv2.getPerspectiveTransform(POINTS_PERSPECTIVE, POINTS_TOP)
@@ -47,12 +49,14 @@ def perspective_2_top(img):
         PERSPECTIVE_2_TOP,
         (TOP_WIDTH, TOP_HEIGHT))
 
+    warped[TOP_CENTER_Y:, :] = 0
+
     return warped
 
 
 LOCAL_2_ROVER = np.array([
-    [0.0, -1.0, TOP_HEIGHT],
-    [-1.0, 0.0, TOP_WIDTH * 0.5]], np.float32)
+    [0.0, -1.0, TOP_CENTER_Y],
+    [-1.0, 0.0, TOP_CENTER_X]], np.float32)
 
 
 def local_2_global(xpos, ypos, yaw_deg):
@@ -84,9 +88,10 @@ LOCAL_CONF_POINTS = np.vstack([
 
 ROVER_CONF_POINTS = LOCAL_2_ROVER.dot(LOCAL_CONF_POINTS.T).T
 
-ROVER_CONF_DIRS = ROVER_CONF_POINTS / np.linalg.norm(
-    ROVER_CONF_POINTS,
-    axis=1).reshape(-1, 1)
+with np.errstate(all='ignore'):
+    ROVER_CONF_DIRS = ROVER_CONF_POINTS / np.linalg.norm(
+        ROVER_CONF_POINTS,
+        axis=1).reshape(-1, 1)
 
 np.nan_to_num(ROVER_CONF_DIRS, False)
 
@@ -110,15 +115,18 @@ def main():
 
     plt.figure(figsize=(6, 6))
 
-    plt.subplot(211)
+    plt.subplot(311)
     plt.imshow(GRID)
 
-    plt.subplot(212)
+    top_view = perspective_2_top(GRID)
+    plt.subplot(312)
+    plt.imshow(top_view)
+
+    plt.subplot(313)
 
     plt.ylim(-160, 160)
     plt.xlim(-160, 160)
 
-    top_view = perspective_2_top(GRID)
     top_view_gray = cv2.cvtColor(top_view, cv2.COLOR_RGB2GRAY)
 
     plt.pcolor(

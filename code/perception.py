@@ -52,29 +52,35 @@ def perception_step(rover):
 
     update_cost_map(decision)
 
-    direction_map = extract_local_cost_map(decision, loc_2_glob)
-    direction_map[:] *= (navi_top > 0)
-    direction_map[:] += (navi_top < 0) * -255.0
+    direction_map = to_local_map(decision.cost_map, loc_2_glob)
+    navi_map = to_local_map(r_map.global_conf_navi, loc_2_glob)
+    direction_map[:] *= np.logical_or(navi_map > 0, navi_top > 0)
+    direction_map[:] += np.logical_or(navi_map < 0, navi_top < 0) * -255.0
+
+    # Prefer forward pixels over backward to break a tie of contrary decisions
+    direction_map.ravel()[:] *= \
+        0.5 * transformations.ROVER_CONF_DIRS.dot([1.0, 0.0]) + 0.5
 
     decision.nav_pixels = np.sum((navi_top > 0).ravel())
-    decision.nav_dir = control.navi_direction(direction_map, False)
+    decision.nav_dir = control.navi_direction(direction_map)
 
-    min_y = navi_top.shape[0] - r_map.vision_image.shape[0]
+    min_x = (r_map.vision_image.shape[1] - transformations.TOP_WIDTH) // 2
+    max_x = min_x + transformations.TOP_WIDTH
 
-    r_map.vision_image[min_y:, :, 0] = -direction_map * (direction_map < 0)
-    r_map.vision_image[min_y:, :, 1] = 255 * (rocks_top > 0)
-    r_map.vision_image[min_y:, :, 2] = direction_map * (direction_map > 0)
+    r_map.vision_image[:, min_x:max_x, 0] = -direction_map * (direction_map < 0)
+    r_map.vision_image[:, min_x:max_x, 1] = 255 * (rocks_top > 0)
+    r_map.vision_image[:, min_x:max_x, 2] = direction_map * (direction_map > 0)
 
     return rover
 
 
-def extract_local_cost_map(decision, loc_2_glob):
+def to_local_map(global_map, loc_2_glob):
     """Returns a patch of the cost map in local coordinates"""
 
     glob_2_loc = np.linalg.inv(np.vstack([loc_2_glob, [0.0, 0.0, 1.0]]))[:2, :]
 
     local_cost_map = cv2.warpAffine(
-        decision.cost_map,
+        global_map,
         glob_2_loc,
         (transformations.TOP_WIDTH, transformations.TOP_HEIGHT))
 

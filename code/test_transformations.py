@@ -19,7 +19,7 @@ class TestTransformations(unittest.TestCase):
     def test_perspective_2_top(self):
         """Perspective points are correctly transformed into a top view"""
 
-        buf = np.zeros([transformations.HEIGHT, transformations.WIDTH], np.float32)
+        buf = np.zeros([images.HEIGHT, images.WIDTH], np.float32)
 
         pts_perspective = transformations.POINTS_PERSPECTIVE.astype(np.int32)
         pts_top = transformations.POINTS_TOP.astype(np.int32)

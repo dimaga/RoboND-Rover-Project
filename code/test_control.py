@@ -3,7 +3,7 @@
 
 import unittest
 import control
-from transformations import TOP_HEIGHT, TOP_WIDTH
+from transformations import TOP_HEIGHT, TOP_WIDTH, TOP_CENTER_X, TOP_CENTER_Y
 import numpy as np
 
 
@@ -17,11 +17,11 @@ class TestConstrol(unittest.TestCase):
 
         nav = np.ones((TOP_HEIGHT, TOP_WIDTH), np.float32)
         nav *= -1.0
-        nav[:, 160] = 1.0
+        nav[:TOP_CENTER_Y, TOP_CENTER_X] = 1.0
 
-        direction = control.navi_direction(nav, False)
+        direction = control.navi_direction(nav)
 
-        # dir is returned expected in rover space
+        # dir is returned in rover space
         np.testing.assert_almost_equal(np.array([1.0, 0.0]), direction)
 
 
@@ -29,24 +29,8 @@ class TestConstrol(unittest.TestCase):
         """If there is a draw, returns zero vector"""
 
         nav = np.zeros((TOP_HEIGHT, TOP_WIDTH), np.float32)
-        direction = control.navi_direction(nav, False)
+        direction = control.navi_direction(nav)
         np.testing.assert_almost_equal(np.array([0.0, 0.0]), direction)
-
-
-    def test_navi_direction_no_distract(self):
-        """Distract from obstacles in the opposite directions"""
-
-        nav = np.ones((TOP_HEIGHT, TOP_WIDTH), np.float32)
-        nav *= -1.0
-        nav[:, 160] = 1.0
-
-        direction = control.navi_direction(nav, True)
-
-        # dir is returned expected in rover space
-        np.testing.assert_almost_equal(
-            np.array([-1.0, 0.0]),
-            direction,
-            decimal=2)
 
 
 if __name__ == '__main__':

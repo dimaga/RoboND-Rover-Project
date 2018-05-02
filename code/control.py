@@ -9,16 +9,24 @@ import images
 import classifiers
 
 
-def navi_direction(navi_top_view, distract_from_walls):
+def navi_direction(navi_top_view):
     """Calculate recommended direction of motion given navigatable
     local confidence map"""
+
+    """
+    values = navi_top_view.reshape(-1, 1)
+    dirs = transformations.ROVER_CONF_DIRS
+
+    idx = np.argmax(values)
+    return dirs[idx]
+    """
 
     values = navi_top_view.reshape(-1, 1)
     dirs = transformations.ROVER_CONF_DIRS
 
-    if not distract_from_walls:
-        values = np.copy(values)
-        values[values < 0] = 0
+    # Ignore walls
+    values = np.copy(values)
+    values[values < 0] = 0
 
     result = np.mean(dirs * values, axis=0)
 
@@ -26,6 +34,7 @@ def navi_direction(navi_top_view, distract_from_walls):
         result /= np.linalg.norm(result)
 
     np.nan_to_num(result, False)
+    
     return result
 
 
@@ -36,7 +45,7 @@ def main():
     img = images.ROCK1
     img_top = transformations.perspective_2_top(img)
     img_navi = classifiers.NAVI.predict(img_top)
-    img_navi_dir = navi_direction(img_navi, False)
+    img_navi_dir = navi_direction(img_navi)
 
     plt.figure(figsize=(12, 9))
 
