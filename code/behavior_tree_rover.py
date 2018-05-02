@@ -114,6 +114,17 @@ SET_GOAL_ROCK = SetGoal(Goal.Rock)
 SET_GOAL_HOME = SetGoal(Goal.Home)
 
 
+def steer_angle(nav_dir):
+    """Steering angle dependently on navi direction"""
+
+    angle_rad = math.atan2(nav_dir[1], nav_dir[0])
+    return 180 * angle_rad / np.pi
+
+
+def is_valid_steer_angle(angle_deg):
+    return 35 > abs(angle_deg)
+
+
 class FollowGoal(Node):
     """Follows the rover along the cost map"""
 
@@ -127,9 +138,11 @@ class FollowGoal(Node):
         if not nav_dir_valid or nav_pixels < 500:
             return Result.Failure
 
-        angle_rad = math.atan2(decision.nav_dir[1], decision.nav_dir[0])
+        angle_deg = steer_angle(decision.nav_dir)
+        if not is_valid_steer_angle(angle_deg):
+            return Result.Failure
 
-        control.steer = np.clip(180 * angle_rad / np.pi, -15, 15)
+        control.steer = np.clip(angle_deg, -15, 15)
         control.brake = 0.0
         control.throttle = 0.2
 
@@ -149,8 +162,16 @@ class Rotate(Node):
         nav_dir_valid = np.linalg.norm(decision.nav_dir) >= 1e-1
         nav_pixels = decision.nav_pixels
 
-        if nav_dir_valid and nav_pixels > 2000:
-            return Result.Failure
+        if nav_dir_valid:
+            if nav_pixels > 2000:
+                angle_deg = steer_angle(decision.nav_dir)
+                if not is_valid_steer_angle(angle_deg):
+                    control.throttle = 0.0
+                    control.brake = 0.0
+                    control.steer = -15 if angle_deg < 0 else 15
+                    return Result.Continue
+
+                return Result.Success
 
         control.throttle = 0.0
         control.brake = 0.0

@@ -97,10 +97,16 @@ def loop_explorer():
 def take():
     """Create a subtree to approach and take a rock"""
 
-    result = Sequence("Take Rock")
+    result = Selection("Take Rock")
     result.append(follow_rock_loop())
-    result.append(STOP)
-    result.append(PICK_ROCK)
+
+    sequence = Sequence("Pick Up Rock")
+    result.append(sequence)
+
+    sequence.append(ANY_ROCK_CLOSE)
+    sequence.append(STOP)
+    sequence.append(PICK_ROCK)
+
     return result
 
 
@@ -135,6 +141,7 @@ def follow_home_loop():
     sequence = Sequence("Follow Home Loop")
 
     sequence.append(Not(IS_STUCK))
+    sequence.append(Not(IS_ANY_ROCK_LEFT))
     sequence.append(SET_GOAL_HOME)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
