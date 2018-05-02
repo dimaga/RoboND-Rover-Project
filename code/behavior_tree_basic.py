@@ -10,7 +10,6 @@ class Result(Enum):
     Success = 1
     Continue = 2
 
-#pylint: disable=too-few-public-methods
 
 class Node(metaclass=ABCMeta):
     """Base class for all behavior tree nodes"""
@@ -18,6 +17,11 @@ class Node(metaclass=ABCMeta):
 
     def __init__(self):
         self._trace = ""
+
+
+    def dump(self, depth=0):
+        """Dumps the structure of the behavior tree"""
+        return (" " * depth) + self.name
 
 
     @property
@@ -54,10 +58,16 @@ class Decorator(Node):
         self._child = child
 
 
+    def dump(self, depth=0):
+        result = super().dump(depth)
+        result += "\n" + self._child.dump(depth + 1)
+        return result
+
+
     @property
     def name(self):
         """Returns the name of the node for debugging output"""
-        return super().name + self._child.name
+        return super().name
 
 
     def run(self, rover, depth=0):
@@ -100,6 +110,15 @@ class CompoundNode(Node):
     def append(self, child):
         """Append a tree child to this node"""
         self._children.append(child)
+
+
+    def dump(self, depth=0):
+        result = super().dump(depth)
+
+        for child in self._children:
+            result += "\n" + child.dump(depth + 1)
+
+        return result
 
 
     @property

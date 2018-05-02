@@ -149,6 +149,8 @@ def follow_home_loop():
 
 
 ROOT = create_behavior_tree()
+print(ROOT.dump())
+
 
 def decision_step(rover):
     """Run decision, determining throttle, brake and steer commands based on
