@@ -34,9 +34,10 @@ class Decorator(Node):
         self._child = child
 
 
+    @property
     def name(self):
         """Returns the name of the node for debugging output"""
-        return super(self).name + self._child.name()
+        return super().name + self._child.name
 
 
     @abstractmethod
@@ -61,7 +62,7 @@ class CompoundNode(Node):
     @property
     def name(self):
         """Returns the name of the node for debugging output"""
-        return super(self).name + self._children[self._idx].name()
+        return super().name + self._children[self._idx].name
 
 
     @abstractmethod
