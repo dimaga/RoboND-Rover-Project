@@ -20,7 +20,7 @@ from behavior_tree_rover import \
 def create_behavior_tree():
     """Create a Behavior Tree to control complex rover behavior"""
 
-    sequence = Selection()
+    sequence = Selection("Root")
     sequence.append(take_all())
     sequence.append(follow_home())
 
@@ -30,7 +30,7 @@ def create_behavior_tree():
 def loop_unstuck():
     """Creates unstuck behavior"""
 
-    sequence = Sequence()
+    sequence = Sequence("Unstuck")
     sequence.append(IS_STUCK)
     sequence.append(GET_UNSTUCK)
 
@@ -41,7 +41,7 @@ LOOP_UNSTUCK = loop_unstuck()
 
 def take_all():
     """Create a subtree to search and collect rock samples"""
-    sequence = Sequence()
+    sequence = Sequence("Take All Rocks")
 
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(explore_unstuck_take())
@@ -53,7 +53,7 @@ def explore_unstuck_take():
     """Create a subtree to select between map exploration, unstucking and taking
     rocks"""
 
-    result = Selection()
+    result = Selection("Explore, Unstuck, Take")
 
     result.append(loop_explorer())
     result.append(LOOP_UNSTUCK)
@@ -65,7 +65,7 @@ def explore_unstuck_take():
 def loop_explorer():
     """Create a subtree to explore the map until any rock is found"""
 
-    sequence = Sequence()
+    sequence = Sequence("Explore")
 
     sequence.append(Not(ARE_ROCKS_REVEALED))
     sequence.append(IS_ANY_ROCK_LEFT)
@@ -78,7 +78,7 @@ def loop_explorer():
 def take():
     """Create a subtree to approach and take a rock"""
 
-    result = Sequence()
+    result = Sequence("Take Rock")
     result.append(follow_rock_loop())
     result.append(STOP)
     result.append(PICK_ROCK)
@@ -88,7 +88,7 @@ def take():
 def follow_rock_loop():
     """Create a subtree to run the loop, approaching a rock"""
 
-    sequence = Sequence()
+    sequence = Sequence("Follow Rock Loop")
 
     sequence.append(ARE_ROCKS_REVEALED)
     sequence.append(IS_ANY_ROCK_LEFT)
@@ -103,7 +103,7 @@ def follow_home():
     """Create a subtree to return home and get unstuck if the rover is stuck
     along the way"""
 
-    result = Selection()
+    result = Selection("Follow Home")
     result.append(LOOP_UNSTUCK)
     result.append(follow_home_loop())
 
@@ -113,7 +113,7 @@ def follow_home():
 def follow_home_loop():
     """Create a subtree to run the loop, returning home"""
 
-    sequence = Sequence()
+    sequence = Sequence("Follow Home Loop")
 
     sequence.append(Not(IS_STUCK))
     sequence.append(SET_GOAL_HOME)

@@ -18,11 +18,13 @@ class Stub(Node):
     # pylint: disable=too-few-public-methods
 
     def __init__(self, return_value):
+        super().__init__()
+
         self.return_value = return_value
         self.calls = 0
 
 
-    def run(self, rover):
+    def _run(self, rover):
         self.calls += 1
         return self.return_value
 
@@ -36,7 +38,7 @@ class TestBehaviorTreeBasic(unittest.TestCase):
         success1 = Stub(Result.Success)
         success2 = Stub(Result.Success)
 
-        sequence = Sequence()
+        sequence = Sequence("Successful Sequence")
         sequence.append(success1)
         sequence.append(success2)
 
@@ -57,7 +59,7 @@ class TestBehaviorTreeBasic(unittest.TestCase):
         failure4 = Stub(Result.Failure)
         failure5 = Stub(Result.Failure)
 
-        sequence = Sequence()
+        sequence = Sequence("Failing Sequence")
         sequence.append(success1)
         sequence.append(success2)
         sequence.append(continue3)
@@ -85,7 +87,7 @@ class TestBehaviorTreeBasic(unittest.TestCase):
         success4 = Stub(Result.Success)
         success5 = Stub(Result.Success)
 
-        selection = Selection()
+        selection = Selection("Successful Selection")
         selection.append(failure1)
         selection.append(failure2)
         selection.append(continue3)
@@ -110,7 +112,7 @@ class TestBehaviorTreeBasic(unittest.TestCase):
         failure1 = Stub(Result.Failure)
         failure2 = Stub(Result.Failure)
 
-        selection = Selection()
+        selection = Selection("Failing Selection")
         selection.append(failure1)
         selection.append(failure2)
 

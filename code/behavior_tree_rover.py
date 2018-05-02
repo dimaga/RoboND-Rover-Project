@@ -1,10 +1,9 @@
 #!python
 """Specific rover components of the behavior tree to control its decisions"""
 
-from behavior_tree_basic import Node, Result
-import numpy as np
 import math
-
+import numpy as np
+from behavior_tree_basic import Node, Result
 
 ROCKS_THRESHOLD = 10
 
@@ -13,7 +12,7 @@ class IsStuck(Node):
     """Returns true if the rover remains immobile for quiate a long period
     of time despite steering or throttle commands"""
 
-    def run(self, rover):
+    def _run(self, rover):
         return Result.Failure
 
 
@@ -23,7 +22,7 @@ IS_STUCK = IsStuck()
 class GetUnstuck(Node):
     """Performs random actions to unstuck from the collision"""
 
-    def run(self, rover):
+    def _run(self, rover):
         return Result.Failure
 
 
@@ -33,7 +32,7 @@ GET_UNSTUCK = GetUnstuck()
 class AreRocksRevealed(Node):
     """Returns true if some rocks are detected in the map"""
 
-    def run(self, rover):
+    def _run(self, rover):
         if np.max(rover.map.global_conf_rocks) > ROCKS_THRESHOLD:
             return Result.Success
 
@@ -46,7 +45,7 @@ ARE_ROCKS_REVEALED = AreRocksRevealed()
 class AnyRockClose(Node):
     """Returns true if there is some rock in the neighbourhood"""
 
-    def run(self, rover):
+    def _run(self, rover):
         if rover.perception.near_sample:
             return Result.Success
 
@@ -59,7 +58,7 @@ ANY_ROCK_CLOSE = AnyRockClose()
 class IsAnyRockLeft(Node):
     """Returns true if some rock samples are still on the ground"""
 
-    def run(self, rover):
+    def _run(self, rover):
 
         statistics = rover.statistics
         if statistics.samples_to_find > statistics.samples_collected:
@@ -79,10 +78,12 @@ class SetGoal(Node):
     Home = 2
 
     def __init__(self, goal):
+        super().__init__()
+
         self.__goal = goal
 
 
-    def run(self, rover):
+    def _run(self, rover):
         if SetGoal.Explore == self.__goal:
             goals_mask = np.abs(rover.map.global_conf_navi) <= 1.0
         elif SetGoal.Rock == self.__goal:
@@ -106,7 +107,7 @@ SET_GOAL_HOME = SetGoal(SetGoal.Home)
 class FollowGoal(Node):
     """Follows the rover along the cost map"""
 
-    def run(self, rover):
+    def _run(self, rover):
         decision = rover.decision
         control = rover.control
 
@@ -132,7 +133,7 @@ FOLLOW_GOAL = FollowGoal()
 class Stop(Node):
     """Stops the rover"""
 
-    def run(self, rover):
+    def _run(self, rover):
         return Result.Failure
 
 
@@ -142,7 +143,7 @@ STOP = Stop()
 class PickRock(Node):
     """Picks a rock sample from the ground"""
 
-    def run(self, rover):
+    def _run(self, rover):
         if rover.control.picking_up:
             return Result.Continue
 

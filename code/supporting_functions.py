@@ -88,7 +88,7 @@ def update_rover(rover, data):
     #    'samples remaining:', data["sample_count"],
     #    'samples collected:', rover.statistics.samples_collected)
 
-    print(rover.statistics.total_time, ROOT.name)
+    print(rover.statistics.total_time, ROOT.trace())
 
     # Get the current image from the center camera of the rover
     img_string = data["image"]
