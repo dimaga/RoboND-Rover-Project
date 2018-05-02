@@ -123,7 +123,7 @@ def telemetry(_, data):
         FPS = FRAME_COUNTER
         FRAME_COUNTER = 0
         SECOND_COUNTER = time.time()
-    print("Current FPS: {}".format(FPS))
+    #print("Current FPS: {}".format(FPS))
 
     if data:
         global ROVER

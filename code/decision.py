@@ -20,7 +20,7 @@ from behavior_tree_rover import \
 def create_behavior_tree():
     """Create a Behavior Tree to control complex rover behavior"""
 
-    sequence = Sequence()
+    sequence = Selection()
     sequence.append(take_all())
     sequence.append(follow_home())
 

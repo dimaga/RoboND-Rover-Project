@@ -50,8 +50,7 @@ def perception_step(rover):
 
     decision = rover.decision
 
-    goals_mask = create_goal_to_explore(r_map)
-    update_cost_map(decision, goals_mask)
+    update_cost_map(decision)
 
     direction_map = extract_local_cost_map(decision, loc_2_glob)
     direction_map[:] *= (navi_top > 0)
@@ -82,20 +81,10 @@ def extract_local_cost_map(decision, loc_2_glob):
     return local_cost_map
 
 
-def update_cost_map(decision, goals_mask):
+def update_cost_map(decision):
     """Recalculate the state of the cost_map, using value iteration algorithm"""
-
-    decision.cost_map = (
-        goals_mask * 255.0
-        + (~goals_mask * 0.99 * cv2.boxFilter(decision.cost_map, -1, (3, 3))))
-
+    decision.cost_map = 0.99 * cv2.boxFilter(decision.cost_map, -1, (3, 3))
     decision.cost_map[:] = np.maximum(decision.cost_map[:], 0.1)
-
-
-def create_goal_to_explore(r_map):
-    """Masks unexplored areas in the confidence map that need to be explored"""
-
-    return np.abs(r_map.global_conf_navi) <= 1.0
 
 
 def update_global(loc_2_glob, r_map, local_map, global_map):
