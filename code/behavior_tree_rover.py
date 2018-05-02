@@ -4,6 +4,7 @@
 import math
 from enum import Enum
 import numpy as np
+import transformations
 from behavior_tree_basic import Node, Result
 
 ROCKS_THRESHOLD = 10
@@ -154,6 +155,51 @@ class FollowGoal(Node):
 
 
 FOLLOW_GOAL = FollowGoal()
+
+
+class IsRockVeryClose(Node):
+    """Checks if the rock is very close"""
+
+    def _run(self, rover):
+        if np.max(rover.map.local_rock_map) > ROCKS_THRESHOLD:
+            return Result.Success
+
+        return Result.Failure
+
+
+IS_ROCK_VERY_CLOSE = IsRockVeryClose()
+
+
+class SlowlyFollowRock(Node):
+    """Slowly approaches very close rock"""
+
+    def _run(self, rover):
+        rocks = (rover.map.local_rock_map > ROCKS_THRESHOLD).ravel()
+        if 0 == np.sum(rocks):
+            return Result.Failure
+
+        rock_points = transformations.ROVER_CONF_POINTS[rocks]
+        rock_distances = np.linalg.norm(rock_points, axis=1)
+        closest_idx = np.argmin(rock_distances)
+
+        #if rock_distances[closest_idx] < 10:
+        #    return Result.Success
+
+        rock_dirs = transformations.ROVER_CONF_DIRS[rocks]
+        nav_dir = rock_dirs[closest_idx]
+
+        angle_deg = nav_angle(nav_dir)
+        if not is_valid_nav_angle(angle_deg):
+            return Result.Failure
+
+        rover.control.steer = np.clip(angle_deg, -15, 15)
+        rover.control.brake = 0.0
+        rover.control.throttle = 0.05
+
+        return Result.Success
+
+
+SLOWLY_FOLLOW_ROCK = SlowlyFollowRock()
 
 
 class Rotate(Node):

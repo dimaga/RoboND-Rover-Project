@@ -140,7 +140,7 @@ def create_output_map(rover):
     plotmap = plotmap.clip(0, 255)
 
     # Overlay obstacle and navigable terrain map with ground truth map
-    map_add = cv2.addWeighted(plotmap, 1, rover.map.ground_truth, 0.5, 0)
+    map_add = cv2.addWeighted(plotmap, 1, rover.statistics.ground_truth, 0.5, 0)
 
     # Check whether any rock detections are present in worldmap
     rock_world_pos = rover.map.worldmap[:, :, 1].nonzero()
@@ -187,10 +187,11 @@ def output_statistics(map_add, rover, samples_located, plotmap):
     # Next figure out how many of those correspond to ground truth pixels
     good_nav_pix = np.float(
         len(((plotmap[:, :, 2] > 0)
-             & (rover.map.ground_truth[:, :, 1] > 0)).nonzero()[0]))
+             & (rover.statistics.ground_truth[:, :, 1] > 0)).nonzero()[0]))
 
     # Grab the total number of map pixels
-    tot_map_pix = np.float(len((rover.map.ground_truth[:, :, 1].nonzero()[0])))
+    tot_map_pix = np.float(
+        len((rover.statistics.ground_truth[:, :, 1].nonzero()[0])))
 
     # Calculate the percentage of ground truth map that has been successfully
     # #found

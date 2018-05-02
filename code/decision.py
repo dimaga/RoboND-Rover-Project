@@ -9,6 +9,8 @@ from behavior_tree_rover import \
     ARE_ROCKS_REVEALED, \
     IS_ROCK_PICKABLE, \
     IS_ANY_ROCK_LEFT, \
+    IS_ROCK_VERY_CLOSE, \
+    SLOWLY_FOLLOW_ROCK, \
     SET_GOAL_EXPLORE, \
     SET_GOAL_ROCK, \
     SET_GOAL_HOME, \
@@ -105,6 +107,7 @@ def take():
 
     result = Selection("Take Rock")
     result.append(follow_rock_loop())
+    result.append(approach_rock())
     result.append(pick_up_rock())
 
     return result
@@ -122,6 +125,17 @@ def pick_up_rock():
     return result
 
 
+def approach_rock():
+    sequence = Sequence("Approach Rock")
+
+    sequence.append(IS_ANY_ROCK_LEFT)
+    sequence.append(Not(IS_ROCK_PICKABLE))
+    sequence.append(IS_ROCK_VERY_CLOSE)
+    sequence.append(SLOWLY_FOLLOW_ROCK)
+
+    return sequence
+
+
 def follow_rock_loop():
     """Create a subtree to run the loop, approaching a rock"""
 
@@ -130,6 +144,7 @@ def follow_rock_loop():
     sequence.append(ARE_ROCKS_REVEALED)
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(Not(IS_ROCK_PICKABLE))
+    sequence.append(Not(IS_ROCK_VERY_CLOSE))
     sequence.append(SET_GOAL_ROCK)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 

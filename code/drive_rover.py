@@ -71,8 +71,7 @@ class Map():
 
         self.vision_image = np.zeros((160, 320, 3), dtype=np.float)
         self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
-
-        self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
+        self.local_rock_map = np.zeros((160, 320), dtype=np.float)
 
 
 class Statistics():
@@ -85,6 +84,7 @@ class Statistics():
         self.samples_pos = None  # To store the actual sample positions
         self.samples_to_find = 0  # To store the initial count of samples
         self.samples_collected = 0  # To count the number of samples collected
+        self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
 
 
 class RoverState():
