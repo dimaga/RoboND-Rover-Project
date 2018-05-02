@@ -2,6 +2,7 @@
 """Specific rover components of the behavior tree to control its decisions"""
 
 import math
+from enum import Enum
 import numpy as np
 from behavior_tree_basic import Node, Result
 
@@ -70,25 +71,34 @@ class IsAnyRockLeft(Node):
 IS_ANY_ROCK_LEFT = IsAnyRockLeft()
 
 
-class SetGoal(Node):
-    """Sets a goal for the cost map"""
-
+class Goal(Enum):
+    """Possible goal values for SetGoal node"""
     Explore = 0
     Rock = 1
     Home = 2
 
+
+class SetGoal(Node):
+    """Sets a goal for the cost map"""
+
+
     def __init__(self, goal):
         super().__init__()
-
         self.__goal = goal
 
 
+    @property
+    def name(self):
+        """Returns the name of the node for debugging output"""
+        return "[" + type(self).__name__ + "(" + str(self.__goal) + ")]"
+
+
     def _run(self, rover):
-        if SetGoal.Explore == self.__goal:
+        if Goal.Explore == self.__goal:
             goals_mask = np.abs(rover.map.global_conf_navi) <= 1.0
-        elif SetGoal.Rock == self.__goal:
+        elif Goal.Rock == self.__goal:
             goals_mask = rover.map.global_conf_rocks > ROCKS_THRESHOLD
-        elif SetGoal.Home == self.__goal:
+        elif Goal.Home == self.__goal:
             goals_mask = np.zeros((rover.map.global_conf_rocks.shape), np.bool)
             goals_mask[100, 100] = True
 
@@ -99,9 +109,9 @@ class SetGoal(Node):
         return Result.Success
 
 
-SET_GOAL_EXPLORE = SetGoal(SetGoal.Explore)
-SET_GOAL_ROCK = SetGoal(SetGoal.Rock)
-SET_GOAL_HOME = SetGoal(SetGoal.Home)
+SET_GOAL_EXPLORE = SetGoal(Goal.Explore)
+SET_GOAL_ROCK = SetGoal(Goal.Rock)
+SET_GOAL_HOME = SetGoal(Goal.Home)
 
 
 class FollowGoal(Node):
@@ -114,15 +124,14 @@ class FollowGoal(Node):
         nav_dir_valid = np.linalg.norm(decision.nav_dir) >= 1e-1
         nav_pixels = decision.nav_pixels
 
-        if nav_dir_valid and nav_pixels > 2000:
-            angle_rad = math.atan2(decision.nav_dir[1], decision.nav_dir[0])
-            control.steer = np.clip(180 * angle_rad / np.pi, -15, 15)
-            control.brake = 0.0
-            control.throttle = 0.2
-        else:
-            control.throttle = 0.0
-            control.brake = 0.0
-            control.steer = -15
+        if not nav_dir_valid or nav_pixels < 500:
+            return Result.Failure
+
+        angle_rad = math.atan2(decision.nav_dir[1], decision.nav_dir[0])
+
+        control.steer = np.clip(180 * angle_rad / np.pi, -15, 15)
+        control.brake = 0.0
+        control.throttle = 0.2
 
         return Result.Success
 
@@ -130,11 +139,40 @@ class FollowGoal(Node):
 FOLLOW_GOAL = FollowGoal()
 
 
+class Rotate(Node):
+    """Rotates the rover to target navigable pixels"""
+
+    def _run(self, rover):
+        decision = rover.decision
+        control = rover.control
+
+        nav_dir_valid = np.linalg.norm(decision.nav_dir) >= 1e-1
+        nav_pixels = decision.nav_pixels
+
+        if nav_dir_valid and nav_pixels > 2000:
+            return Result.Failure
+
+        control.throttle = 0.0
+        control.brake = 0.0
+        control.steer = -15
+
+        return Result.Continue
+
+
+ROTATE = Rotate()
+
+
 class Stop(Node):
     """Stops the rover"""
 
     def _run(self, rover):
-        return Result.Failure
+        if rover.perception.vel > 0.2:
+            rover.control.throttle = 0
+            rover.control.brake = 10.0
+            rover.control.steer = 0.0
+            return Result.Continue
+
+        return Result.Success
 
 
 STOP = Stop()

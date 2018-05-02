@@ -13,6 +13,7 @@ from behavior_tree_rover import \
     SET_GOAL_ROCK, \
     SET_GOAL_HOME, \
     FOLLOW_GOAL, \
+    ROTATE, \
     STOP, \
     PICK_ROCK
 
@@ -37,6 +38,24 @@ def loop_unstuck():
     return UntilFail(sequence)
 
 LOOP_UNSTUCK = loop_unstuck()
+
+
+def follow_goal_or_rotate():
+    """Follows the goal and if no navigable pixels are available,
+    turns around"""
+
+    result = Selection("Follow Goal or Rotate")
+    result.append(FOLLOW_GOAL)
+
+    sequence = Sequence("Rotate")
+    result.append(sequence)
+
+    sequence.append(STOP)
+    sequence.append(ROTATE)
+    return result
+
+
+FOLLOW_GOAL_OR_ROTATE = follow_goal_or_rotate()
 
 
 def take_all():
@@ -70,7 +89,7 @@ def loop_explorer():
     sequence.append(Not(ARE_ROCKS_REVEALED))
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(SET_GOAL_EXPLORE)
-    sequence.append(FOLLOW_GOAL)
+    sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
     return UntilFail(sequence)
 
@@ -94,7 +113,7 @@ def follow_rock_loop():
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(Not(ANY_ROCK_CLOSE))
     sequence.append(SET_GOAL_ROCK)
-    sequence.append(FOLLOW_GOAL)
+    sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
     return UntilFail(sequence)
 
@@ -117,7 +136,7 @@ def follow_home_loop():
 
     sequence.append(Not(IS_STUCK))
     sequence.append(SET_GOAL_HOME)
-    sequence.append(FOLLOW_GOAL)
+    sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
     return UntilFail(sequence)
 
