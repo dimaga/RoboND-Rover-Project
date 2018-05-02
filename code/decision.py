@@ -7,7 +7,7 @@ from behavior_tree_rover import \
     IS_STUCK, \
     GET_UNSTUCK, \
     ARE_ROCKS_REVEALED, \
-    ANY_ROCK_CLOSE, \
+    IS_ROCK_PICKABLE, \
     IS_ANY_ROCK_LEFT, \
     SET_GOAL_EXPLORE, \
     SET_GOAL_ROCK, \
@@ -37,6 +37,7 @@ def loop_unstuck():
 
     return UntilFail(sequence)
 
+
 LOOP_UNSTUCK = loop_unstuck()
 
 
@@ -46,12 +47,17 @@ def follow_goal_or_rotate():
 
     result = Selection("Follow Goal or Rotate")
     result.append(FOLLOW_GOAL)
+    result.append(rotate_to_goal())
+    return result
 
-    sequence = Sequence("Rotate")
-    result.append(sequence)
 
-    sequence.append(STOP)
-    sequence.append(ROTATE)
+def rotate_to_goal():
+    """Rotates the rover in the direction of goal"""
+
+    result = Sequence("Rotate To Goal")
+    result.append(STOP)
+    result.append(ROTATE)
+
     return result
 
 
@@ -99,13 +105,19 @@ def take():
 
     result = Selection("Take Rock")
     result.append(follow_rock_loop())
+    result.append(pick_up_rock())
 
-    sequence = Sequence("Pick Up Rock")
-    result.append(sequence)
+    return result
 
-    sequence.append(ANY_ROCK_CLOSE)
-    sequence.append(STOP)
-    sequence.append(PICK_ROCK)
+
+def pick_up_rock():
+    """Picks up a rock if it is possible to do so"""
+
+    result = Sequence("Pick Up Rock")
+
+    result.append(IS_ROCK_PICKABLE)
+    result.append(STOP)
+    result.append(PICK_ROCK)
 
     return result
 
@@ -117,7 +129,7 @@ def follow_rock_loop():
 
     sequence.append(ARE_ROCKS_REVEALED)
     sequence.append(IS_ANY_ROCK_LEFT)
-    sequence.append(Not(ANY_ROCK_CLOSE))
+    sequence.append(Not(IS_ROCK_PICKABLE))
     sequence.append(SET_GOAL_ROCK)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 

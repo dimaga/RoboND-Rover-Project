@@ -43,8 +43,8 @@ class AreRocksRevealed(Node):
 ARE_ROCKS_REVEALED = AreRocksRevealed()
 
 
-class AnyRockClose(Node):
-    """Returns true if there is some rock in the neighbourhood"""
+class IsRockPickable(Node):
+    """Returns true if there is a close rock that can be picked"""
 
     def _run(self, rover):
         if rover.perception.near_sample:
@@ -53,7 +53,7 @@ class AnyRockClose(Node):
         return Result.Failure
 
 
-ANY_ROCK_CLOSE = AnyRockClose()
+IS_ROCK_PICKABLE = IsRockPickable()
 
 
 class IsAnyRockLeft(Node):
@@ -95,7 +95,7 @@ class SetGoal(Node):
 
     def _run(self, rover):
         if Goal.Explore == self.__goal:
-            goals_mask = np.abs(rover.map.global_conf_navi) <= 1.0
+            goals_mask = np.abs(rover.map.global_conf_rocks) <= 1.0
 
         elif Goal.Rock == self.__goal:
             goals_mask = rover.map.global_conf_rocks > ROCKS_THRESHOLD
