@@ -113,7 +113,7 @@ def warp_angle180(angle_deg):
 def main():
     """Shows results of what the module does if run as a separate application"""
 
-    plt.figure(figsize=(6, 6))
+    plt.figure(figsize=(6, 9))
 
     plt.subplot(311)
     plt.imshow(GRID)

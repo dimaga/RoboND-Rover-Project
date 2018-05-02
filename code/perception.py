@@ -16,7 +16,7 @@ def prepare_forward_mask():
     """Build circular weighted mask that prefers forward regions of the cost map
     over backward regions in order to break a tie in decision process"""
 
-    distances = np.linalg.norm(transformations.ROVER_CONF_POINTS[:, :2], axis=1)
+    distances = np.linalg.norm(transformations.ROVER_CONF_POINTS, axis=1)
     circle_mask = distances < transformations.TOP_HEIGHT // 2
 
     weights = 0.5 * transformations.ROVER_CONF_DIRS.dot([1.0, 0.0]) + 0.5
@@ -49,12 +49,12 @@ def perception_step(rover):
     rocks_top = transformations.perspective_2_top(rocks)
 
     navi = classifiers.NAVI.predict(img)
-    navi_top = transformations.perspective_2_top(navi)
+    nav_top = transformations.perspective_2_top(navi)
 
     r_map = rover.map
 
     if aligned_to_ground:
-        update_global(loc_2_glob, r_map, navi_top, r_map.global_conf_navi)
+        update_global(loc_2_glob, r_map, nav_top, r_map.global_conf_navi)
         update_global(loc_2_glob, r_map, rocks_top, r_map.global_conf_rocks)
 
         rocks_mask = r_map.global_conf_rocks > 0
@@ -73,8 +73,34 @@ def perception_step(rover):
 
     update_cost_map(decision)
 
-    direction_map = to_local_map(decision.cost_map, loc_2_glob)
-    navi_map = to_local_map(r_map.global_conf_navi, loc_2_glob)
+    direction_map = prepare_direction_map(decision, r_map, nav_top, loc_2_glob)
+
+    decision.nav_dir = control.navi_direction(direction_map)
+    decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
+
+    r_map.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
+    r_map.vision_image[:, :, 1] = 255 * (rocks_top > 0)
+    r_map.vision_image[:, :, 2] = direction_map * (direction_map > 0)
+
+    return rover
+
+
+def calc_nav_pixels(nav_dir, nav_top):
+    """Calculates number of pixels along the selected direction"""
+
+    similar_dirs = (transformations.ROVER_CONF_DIRS.dot(nav_dir) > 0.8).ravel()
+    navigatable = (nav_top > 0).ravel()
+
+    return np.sum(similar_dirs * navigatable)
+
+
+def prepare_direction_map(decision, r_map, navi_top, loc_2_glob):
+    """Prepares a map out of cost_map and current navigable area to
+    make decisions about steering directions to reach a distant goal"""
+
+    glob_2_loc = np.linalg.inv(np.vstack([loc_2_glob, [0.0, 0.0, 1.0]]))[:2, :]
+    direction_map = to_local_map(decision.cost_map, glob_2_loc)
+    navi_map = to_local_map(r_map.global_conf_navi, glob_2_loc)
 
     obstacles = np.logical_or(navi_map < 0, navi_top < 0)
     navigable = np.logical_or(navi_map > 0, navi_top > 0)
@@ -84,20 +110,11 @@ def perception_step(rover):
     direction_map += obstacles * -255.0
     direction_map *= FORWARD_MASK
 
-    decision.nav_pixels = np.sum((navi_top > 0).ravel())
-    decision.nav_dir = control.navi_direction(direction_map)
-
-    r_map.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
-    r_map.vision_image[:, :, 1] = 255 * (rocks_top > 0)
-    r_map.vision_image[:, :, 2] = direction_map * (direction_map > 0)
-
-    return rover
+    return direction_map
 
 
-def to_local_map(global_map, loc_2_glob):
+def to_local_map(global_map, glob_2_loc):
     """Returns a patch of the cost map in local coordinates"""
-
-    glob_2_loc = np.linalg.inv(np.vstack([loc_2_glob, [0.0, 0.0, 1.0]]))[:2, :]
 
     local_cost_map = cv2.warpAffine(
         global_map,
