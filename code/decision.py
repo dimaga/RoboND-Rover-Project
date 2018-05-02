@@ -1,102 +1,131 @@
 #!python
 """Implements decision making algorithms, defining controls of the robot"""
 
-import math
+from behavior_tree_basic import UntilFail, Not, Sequence, Selection
 
-import numpy as np
+from behavior_tree_rover import \
+    IS_STUCK, \
+    GET_UNSTUCK, \
+    ARE_ROCKS_REVEALED, \
+    ANY_ROCK_CLOSE, \
+    IS_ANY_ROCK_LEFT, \
+    SET_GOAL_EXPLORE, \
+    SET_GOAL_ROCK, \
+    SET_GOAL_HOME, \
+    FOLLOW_GOAL, \
+    STOP, \
+    PICK_ROCK
 
+
+def create_behavior_tree():
+    """Create a Behavior Tree to control complex rover behavior"""
+
+    sequence = Sequence()
+    sequence.append(take_all())
+    sequence.append(follow_home())
+
+    return sequence
+
+
+def loop_unstuck():
+    """Creates unstuck behavior"""
+
+    sequence = Sequence()
+    sequence.append(IS_STUCK)
+    sequence.append(GET_UNSTUCK)
+
+    return UntilFail(sequence)
+
+LOOP_UNSTUCK = loop_unstuck()
+
+
+def take_all():
+    """Create a subtree to search and collect rock samples"""
+    sequence = Sequence()
+
+    sequence.append(IS_ANY_ROCK_LEFT)
+    sequence.append(explore_unstuck_take())
+
+    return UntilFail(sequence)
+
+
+def explore_unstuck_take():
+    """Create a subtree to select between map exploration, unstucking and taking
+    rocks"""
+
+    result = Selection()
+
+    result.append(loop_explorer())
+    result.append(LOOP_UNSTUCK)
+    result.append(take())
+
+    return result
+
+
+def loop_explorer():
+    """Create a subtree to explore the map until any rock is found"""
+
+    sequence = Sequence()
+
+    sequence.append(Not(ARE_ROCKS_REVEALED))
+    sequence.append(IS_ANY_ROCK_LEFT)
+    sequence.append(SET_GOAL_EXPLORE)
+    sequence.append(FOLLOW_GOAL)
+
+    return UntilFail(sequence)
+
+
+def take():
+    """Create a subtree to approach and take a rock"""
+
+    result = Sequence()
+    result.append(follow_rock_loop())
+    result.append(STOP)
+    result.append(PICK_ROCK)
+    return result
+
+
+def follow_rock_loop():
+    """Create a subtree to run the loop, approaching a rock"""
+
+    sequence = Sequence()
+
+    sequence.append(ARE_ROCKS_REVEALED)
+    sequence.append(IS_ANY_ROCK_LEFT)
+    sequence.append(Not(ANY_ROCK_CLOSE))
+    sequence.append(SET_GOAL_ROCK)
+    sequence.append(FOLLOW_GOAL)
+
+    return UntilFail(sequence)
+
+
+def follow_home():
+    """Create a subtree to return home and get unstuck if the rover is stuck
+    along the way"""
+
+    result = Selection()
+    result.append(LOOP_UNSTUCK)
+    result.append(follow_home_loop())
+
+    return result
+
+
+def follow_home_loop():
+    """Create a subtree to run the loop, returning home"""
+
+    sequence = Sequence()
+
+    sequence.append(Not(IS_STUCK))
+    sequence.append(SET_GOAL_HOME)
+    sequence.append(FOLLOW_GOAL)
+
+    return UntilFail(sequence)
+
+
+ROOT = create_behavior_tree()
 
 def decision_step(rover):
-    """Decision tree, determining throttle, brake and steer commands based on
+    """Run decision, determining throttle, brake and steer commands based on
     the output of the perception_step() function"""
-
-    # Implement conditionals to decide what to do given perception data
-    # Here you're all set up with some basic functionality but you'll need to
-    # improve on this decision tree to do a good job of navigating autonomously!
-
-    # Example:
-    # Check if we have vision data to make decisions with
-    if rover.decision.nav_dir is not None:
-
-        nav_dir_valid = np.linalg.norm(rover.decision.nav_dir) >= 1e-1
-        nav_pixels = rover.decision.nav_pixels
-
-        # Check for rover.decision.rover status
-        if rover.decision.mode == 'forward':
-            # Check the extent of navigable terrain
-            if nav_dir_valid and nav_pixels >= rover.constants.stop_forward:
-                # If mode is forward, navigable terrain looks good
-                # and velocity is below max, then throttle
-                if rover.perception.vel < rover.constants.max_vel:
-                    # Set throttle value to throttle setting
-                    rover.control.throttle = rover.constants.throttle_set
-                else:  # Else coast
-                    rover.control.throttle = 0
-                rover.control.brake = 0
-                # Set steering to average angle clipped to the range +/- 15
-                rover.control.steer = nav_dir_2_steer(rover)
-            # If there's a lack of navigable terrain pixels then go to 'stop'
-            # mode
-            else:
-                # Set mode to "stop" and hit the brakes!
-                rover.control.throttle = 0
-                # Set brake to stored brake value
-                rover.control.brake = rover.constants.brake_set
-                rover.control.steer = 0
-                rover.decision.mode = 'stop'
-
-        # If we're already in "stop" mode then make different decisions
-        elif rover.decision.mode == 'stop':
-            # If we're in stop mode but still moving keep braking
-            if rover.perception.vel > 0.2:
-                rover.control.throttle = 0
-                rover.control.brake = rover.constants.brake_set
-                rover.control.steer = 0
-            # If we're not moving (vel < 0.2) then do something else
-            else:
-
-                # If we're stopped but see sufficient navigable terrain in front
-                # then go!
-                if nav_dir_valid and nav_pixels >= rover.constants.go_forward:
-                    # Set throttle back to stored value
-                    rover.control.throttle = rover.constants.throttle_set
-                    # Release the brake
-                    rover.control.brake = 0
-                    # Set steer to mean angle
-                    rover.control.steer = nav_dir_2_steer(rover)
-                    rover.decision.mode = 'forward'
-
-                else:
-                    # Now we're stopped and we have vision data to
-                    # see if there's a path forward
-                    rover.control.throttle = 0
-                    # Release the brake to allow turning
-                    rover.control.brake = 0
-
-                    # Turn range is +/- 15 degrees, when stopped the
-                    # next line will induce 4-wheel turning
-
-                    # Could be more clever here about which way to turn
-                    rover.control.steer = -15
-
-    # Just to make the rover do something
-    # even if no modifications have been made to the code
-    else:
-        rover.control.throttle = rover.constants.throttle_set
-        rover.control.steer = 0
-        rover.control.brake = 0
-
-    # If in a state where want to pickup a rock send pickup command
-    if rover.perception.near_sample and \
-            abs(rover.perception.vel) < 1e-4 and \
-            not rover.control.picking_up:
-        rover.control.send_pickup = True
-
+    ROOT.run(rover)
     return rover
-
-
-def nav_dir_2_steer(rover):
-    """Converts nav_dir direction vector in the recommended steer command"""
-
-    angle_rad = math.atan2(rover.decision.nav_dir[1], rover.decision.nav_dir[0])
-    return np.clip(180 * angle_rad / np.pi, -15, 15)

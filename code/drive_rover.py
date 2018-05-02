@@ -87,21 +87,6 @@ class Statistics():
         self.samples_collected = 0  # To count the number of samples collected
 
 
-class Constants():
-    """The class retains boundary values for some of the rover parameters"""
-
-    def __init__(self):
-        self.throttle_set = 0.2  # Throttle setting when accelerating
-        self.brake_set = 10  # Brake setting when braking
-        # The stop_forward and go_forward fields below represent total count
-        # of navigable terrain pixels.  This is a very crude form of knowing
-        # when you can keep going and when you should stop.  Feel free to
-        # get creative in adding new fields or modifying these!
-        self.stop_forward = 500  # Threshold to initiate stopping
-        self.go_forward = 2000  # Threshold to go forward again
-        self.max_vel = 2  # Maximum velocity (meters/second)
-
-
 class RoverState():
     """The class retains all rover parameters"""
 
@@ -111,7 +96,6 @@ class RoverState():
         self.decision = Decision()
         self.map = Map()
         self.statistics = Statistics()
-        self.constants = Constants()
 
 
 # Initialize our rover

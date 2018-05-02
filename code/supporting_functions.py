@@ -12,6 +12,8 @@ import numpy as np
 # pylint: disable=import-error
 from PIL import Image
 
+from decision import ROOT
+
 
 def convert_to_float(string_to_convert):
     """Converts telemetry strings to float independent of decimal convention"""
@@ -46,7 +48,8 @@ def update_rover(rover, data):
             rover.statistics.total_time = tot_time
 
     # Print out the fields in the telemetry data dictionary
-    print(data.keys())
+    # print(data.keys())
+
     # The current speed of the rover in m/s
     rover.perception.vel = convert_to_float(data["speed"])
 
@@ -73,17 +76,19 @@ def update_rover(rover, data):
     rover.statistics.samples_collected = (
         rover.statistics.samples_to_find - np.int(data["sample_count"]))
 
-    print(
-        'speed =', rover.perception.vel,
-        'position =', rover.perception.pos,
-        'throttle =', rover.control.throttle,
-        'steer_angle =', rover.control.steer,
-        'near_sample:', rover.perception.near_sample,
-        'picking_up:', data["picking_up"],
-        'sending pickup:', rover.control.send_pickup,
-        'total time:', rover.statistics.total_time,
-        'samples remaining:', data["sample_count"],
-        'samples collected:', rover.statistics.samples_collected)
+    #print(
+    #    'speed =', rover.perception.vel,
+    #    'position =', rover.perception.pos,
+    #    'throttle =', rover.control.throttle,
+    #    'steer_angle =', rover.control.steer,
+    #    'near_sample:', rover.perception.near_sample,
+    #    'picking_up:', data["picking_up"],
+    #    'sending pickup:', rover.control.send_pickup,
+    #    'total time:', rover.statistics.total_time,
+    #    'samples remaining:', data["sample_count"],
+    #    'samples collected:', rover.statistics.samples_collected)
+
+    print(ROOT.name)
 
     # Get the current image from the center camera of the rover
     img_string = data["image"]
