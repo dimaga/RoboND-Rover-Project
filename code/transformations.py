@@ -7,7 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 
-from images import HEIGHT, GRID
+from images import WIDTH, HEIGHT, GRID
 
 PIXELS_PER_METER = 10.0
 BOTTOM_OFFSET = 6
@@ -19,7 +19,7 @@ POINTS_PERSPECTIVE = np.float32([
     [118, 96]
 ])
 
-TOP_WIDTH = HEIGHT
+TOP_WIDTH = WIDTH
 TOP_HEIGHT = HEIGHT
 TOP_CENTER_X = TOP_WIDTH // 2
 TOP_CENTER_Y = TOP_HEIGHT // 2

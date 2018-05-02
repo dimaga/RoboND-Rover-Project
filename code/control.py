@@ -13,14 +13,6 @@ def navi_direction(navi_top_view):
     """Calculate recommended direction of motion given navigatable
     local confidence map"""
 
-    """
-    values = navi_top_view.reshape(-1, 1)
-    dirs = transformations.ROVER_CONF_DIRS
-
-    idx = np.argmax(values)
-    return dirs[idx]
-    """
-
     values = navi_top_view.reshape(-1, 1)
     dirs = transformations.ROVER_CONF_DIRS
 
@@ -34,7 +26,7 @@ def navi_direction(navi_top_view):
         result /= np.linalg.norm(result)
 
     np.nan_to_num(result, False)
-    
+
     return result
 
 

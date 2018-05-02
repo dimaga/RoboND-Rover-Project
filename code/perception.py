@@ -3,9 +3,30 @@
 
 import numpy as np
 import cv2
+
+# pylint: disable=import-error
+import matplotlib.pyplot as plt
+
 import transformations
 import classifiers
 import control
+
+
+def prepare_forward_mask():
+    """Build circular weighted mask that prefers forward regions of the cost map
+    over backward regions in order to break a tie in decision process"""
+
+    distances = np.linalg.norm(transformations.ROVER_CONF_POINTS[:, :2], axis=1)
+    circle_mask = distances < transformations.TOP_HEIGHT // 2
+
+    weights = 0.5 * transformations.ROVER_CONF_DIRS.dot([1.0, 0.0]) + 0.5
+
+    return (circle_mask * weights).reshape(
+        transformations.TOP_HEIGHT,
+        transformations.TOP_WIDTH)
+
+
+FORWARD_MASK = prepare_forward_mask()
 
 
 def perception_step(rover):
@@ -59,22 +80,16 @@ def perception_step(rover):
     navigable = np.logical_or(navi_map > 0, navi_top > 0)
     np.logical_and(~obstacles, navigable, out=navigable)
 
-    direction_map[:] *= navigable
-    direction_map[:] += obstacles * -255.0
-
-    # Prefer forward pixels over backward to break a tie of contrary decisions
-    direction_map.ravel()[:] *= \
-        0.5 * transformations.ROVER_CONF_DIRS.dot([1.0, 0.0]) + 0.5
+    direction_map *= navigable
+    direction_map += obstacles * -255.0
+    direction_map *= FORWARD_MASK
 
     decision.nav_pixels = np.sum((navi_top > 0).ravel())
     decision.nav_dir = control.navi_direction(direction_map)
 
-    min_x = (r_map.vision_image.shape[1] - transformations.TOP_WIDTH) // 2
-    max_x = min_x + transformations.TOP_WIDTH
-
-    r_map.vision_image[:, min_x:max_x, 0] = -direction_map * (direction_map < 0)
-    r_map.vision_image[:, min_x:max_x, 1] = 255 * (rocks_top > 0)
-    r_map.vision_image[:, min_x:max_x, 2] = direction_map * (direction_map > 0)
+    r_map.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
+    r_map.vision_image[:, :, 1] = 255 * (rocks_top > 0)
+    r_map.vision_image[:, :, 2] = direction_map * (direction_map > 0)
 
     return rover
 
@@ -113,3 +128,15 @@ def update_global(loc_2_glob, r_map, local_map, global_map):
 
     # Clipping to prevent the map from being overconfident
     np.clip(global_map, -255.0, 255.0, out=global_map)
+
+
+def main():
+    """Shows results of what the module does if run as a separate application"""
+
+    plt.imshow(FORWARD_MASK, cmap="gray")
+    plt.show()
+    return
+
+
+if __name__ == '__main__':
+    main()
