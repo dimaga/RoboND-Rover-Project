@@ -96,18 +96,20 @@ class SetGoal(Node):
 
     def _run(self, rover):
         if Goal.Explore == self.__goal:
-            goals_mask = np.abs(rover.map.global_conf_rocks) <= 1.0
+            sigma = 3
+            v = rover.map.global_conf_rocks / sigma
+            v_sq = v * v
+            goals = 255 * np.exp(-v_sq)
 
         elif Goal.Rock == self.__goal:
-            goals_mask = rover.map.global_conf_rocks > ROCKS_THRESHOLD
+            goals = 255 * (rover.map.global_conf_rocks > ROCKS_THRESHOLD)
 
         elif Goal.Home == self.__goal:
-            goals_mask = np.zeros((rover.map.global_conf_rocks.shape), np.bool)
-            goals_mask[87, 98] = True
+            goals = np.zeros((rover.map.global_conf_rocks.shape), np.bool)
+            goals[87, 98] = 255
 
-        rover.decision.cost_map = (
-            goals_mask * 255
-            + ~goals_mask * rover.decision.cost_map)
+        rover.decision.cost_map += goals
+        np.minimum(255, rover.decision.cost_map, out=rover.decision.cost_map)
 
         return Result.Success
 
