@@ -103,7 +103,7 @@ class SetGoal(Node):
 
         elif Goal.Home == self.__goal:
             goals_mask = np.zeros((rover.map.global_conf_rocks.shape), np.bool)
-            goals_mask[100, 100] = True
+            goals_mask[87, 98] = True
 
         rover.decision.cost_map = (
             goals_mask * 255
@@ -182,20 +182,17 @@ class SlowlyFollowRock(Node):
         rock_distances = np.linalg.norm(rock_points, axis=1)
         closest_idx = np.argmin(rock_distances)
 
-        #if rock_distances[closest_idx] < 10:
-        #    return Result.Success
-
         rock_dirs = transformations.ROVER_CONF_DIRS[rocks]
         nav_dir = rock_dirs[closest_idx]
 
         angle_deg = nav_angle(nav_dir)
-        if not is_valid_nav_angle(angle_deg):
-            return Result.Failure
+        if is_valid_nav_angle(angle_deg):
+            rover.control.throttle = 0.05
+        else:
+            rover.control.throttle = 0.0
 
         rover.control.steer = np.clip(angle_deg, -15, 15)
         rover.control.brake = 0.0
-        rover.control.throttle = 0.05
-
         return Result.Success
 
 

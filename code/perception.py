@@ -57,6 +57,13 @@ def perception_step(rover):
         update_global(loc_2_glob, r_map, nav_top, r_map.global_conf_navi)
         update_global(loc_2_glob, r_map, rocks_top, r_map.global_conf_rocks)
 
+        # Slowly forget rocks map to make the rover re-explore the map rather
+        # than get stuck after the exploration somewhere. Note that only
+        # rocks map is being forgotten, since it is used for exploration. We
+        # should not forget navigable map, as mapping percent is one of the
+        # passing criteria for this project
+        r_map.global_conf_rocks *= 0.99
+
         rocks_mask = r_map.global_conf_rocks > 0
 
         r_map.worldmap[:, :, 0] = np.maximum(
