@@ -97,8 +97,8 @@ class SetGoal(Node):
     def _run(self, rover):
         if Goal.Explore == self.__goal:
             sigma = 3
-            v = rover.map.global_conf_rocks / sigma
-            v_sq = v * v
+            value = rover.map.global_conf_rocks / sigma
+            v_sq = value * value
             goals = 255 * np.exp(-v_sq)
 
         elif Goal.Rock == self.__goal:

@@ -126,6 +126,8 @@ def pick_up_rock():
 
 
 def approach_rock():
+    """Slowly approaches the rock to pick it up"""
+
     sequence = Sequence("Approach Rock")
 
     sequence.append(IS_ANY_ROCK_LEFT)
