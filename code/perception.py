@@ -135,7 +135,7 @@ def to_local_map(global_map, glob_2_loc):
 def update_cost_map(decision, global_navi_map):
     """Recalculate the state of the cost_map, using value iteration algorithm"""
     decision.cost_map *= global_navi_map > -1.0
-    decision.cost_map = 0.99 * cv2.boxFilter(decision.cost_map, -1, (3, 3))
+    decision.cost_map = 0.998 * cv2.boxFilter(decision.cost_map, -1, (3, 3))
     decision.cost_map[:] = np.maximum(decision.cost_map[:], 0.1)
 
 

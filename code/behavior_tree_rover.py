@@ -7,7 +7,7 @@ import numpy as np
 import transformations
 from behavior_tree_basic import Node, Result
 
-ROCKS_THRESHOLD = 10
+ROCKS_THRESHOLD = 5
 
 
 class IsStuck(Node):
