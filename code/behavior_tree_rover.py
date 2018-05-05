@@ -159,7 +159,7 @@ class SetGoal(Node):
             goals = 255 * (rover.map.global_conf_rocks > ROCKS_THRESHOLD)
 
         elif Goal.Home == self.__goal:
-            goals = np.zeros((rover.map.global_conf_rocks.shape), np.bool)
+            goals = np.zeros((rover.map.global_conf_rocks.shape))
             goals[87, 98] = 255
 
         rover.decision.cost_map += goals
