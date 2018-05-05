@@ -87,7 +87,7 @@ def perception_step(rover):
     r_map.local_rocks = to_local_map(r_map.global_conf_rocks, glob_2_loc)
     r_map.local_navi = to_local_map(r_map.global_conf_navi, glob_2_loc)
 
-    choose_best_direction(decision, direction_map, nav_top)
+    choose_best_direction(decision, direction_map, r_map.local_navi)
 
     statistics.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
     statistics.vision_image[:, :, 1] = 255 * (rocks_top > 0)
