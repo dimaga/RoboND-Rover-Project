@@ -275,20 +275,18 @@ class Rotate(Node):
         control = rover.control
 
         nav_dir_valid = np.linalg.norm(decision.nav_dir) >= 1e-1
-        nav_pixels = decision.nav_pixels
 
         if nav_dir_valid:
-            if nav_pixels > 2000:
-                angle_deg = nav_angle(decision.nav_dir)
-                if not is_valid_nav_angle(angle_deg):
-                    control.throttle = 0.0
-                    control.brake = 0.0
-                    control.steer = -15 if angle_deg < 0 else 15
+            angle_deg = nav_angle(decision.nav_dir)
+            if not is_valid_nav_angle(angle_deg):
+                control.throttle = 0.0
+                control.brake = 0.0
+                control.steer = -5 if angle_deg < 0 else 5
                 return Result.Success
 
         control.throttle = 0.0
         control.brake = 0.0
-        control.steer = -15
+        control.steer = -10
 
         return Result.Success
 
