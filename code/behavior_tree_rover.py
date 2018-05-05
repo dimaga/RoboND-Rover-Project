@@ -163,16 +163,30 @@ class SlowlyFollowRock(Node):
     """Slowly approaches very close rock"""
 
     def _run(self, rover):
-        rocks = (rover.map.local_rock_map > ROCKS_THRESHOLD).ravel()
+        r_map = rover.map
+
+        rocks = (r_map.local_rocks > ROCKS_THRESHOLD).ravel()
         if 0 == np.sum(rocks):
             return Result.Failure
 
-        rock_points = transformations.ROVER_CONF_POINTS[rocks]
-        rock_distances = np.linalg.norm(rock_points, axis=1)
-        closest_idx = np.argmin(rock_distances)
+        all_distances = np.linalg.norm(
+            transformations.ROVER_CONF_POINTS,
+            axis=1)
 
-        rock_dirs = transformations.ROVER_CONF_DIRS[rocks]
-        nav_dir = rock_dirs[closest_idx]
+        rock_distances = all_distances[rocks]
+        closest_idx = np.argmin(rock_distances)
+        closest_rock_dist = rock_distances[closest_idx]
+
+        nav_dir = transformations.ROVER_CONF_DIRS[rocks][closest_idx]
+
+        closer_pts = all_distances < closest_rock_dist
+        similar_dirs = transformations.ROVER_CONF_DIRS.dot(nav_dir) > 0.99
+        pts_on_the_way = np.logical_and(closer_pts, similar_dirs)
+
+        if np.sum(pts_on_the_way) > 0:
+            obstacles = np.sum(r_map.local_navi.ravel()[pts_on_the_way] < -10)
+            if obstacles > 10:
+                return Result.Failure
 
         angle_deg = nav_angle(nav_dir)
         if is_valid_nav_angle(angle_deg):
@@ -205,15 +219,13 @@ class Rotate(Node):
                     control.throttle = 0.0
                     control.brake = 0.0
                     control.steer = -15 if angle_deg < 0 else 15
-                    return Result.Continue
-
                 return Result.Success
 
         control.throttle = 0.0
         control.brake = 0.0
         control.steer = -15
 
-        return Result.Continue
+        return Result.Success
 
 
 ROTATE = Rotate()

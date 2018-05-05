@@ -82,8 +82,16 @@ def perception_step(rover):
     update_cost_map(decision, r_map.global_conf_navi)
 
     glob_2_loc = np.linalg.inv(np.vstack([loc_2_glob, [0.0, 0.0, 1.0]]))[:2, :]
-    direction_map = prepare_direction_map(decision, r_map, nav_top, glob_2_loc)
-    r_map.local_rock_map = to_local_map(r_map.global_conf_rocks, glob_2_loc)
+
+    direction_map = prepare_direction_map(
+        decision,
+        r_map,
+        aligned_to_ground,
+        nav_top,
+        glob_2_loc)
+
+    r_map.local_rocks = to_local_map(r_map.global_conf_rocks, glob_2_loc)
+    r_map.local_navi = to_local_map(r_map.global_conf_navi, glob_2_loc)
 
     decision.nav_dir = control.navi_direction(direction_map)
     decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
@@ -104,16 +112,26 @@ def calc_nav_pixels(nav_dir, nav_top):
     return np.sum(similar_dirs * navigatable)
 
 
-def prepare_direction_map(decision, r_map, navi_top, glob_2_loc):
+def prepare_direction_map(
+        decision,
+        r_map,
+        aligned_to_ground,
+        navi_top,
+        glob_2_loc):
+
     """Prepares a map out of cost_map and current navigable area to
     make decisions about steering directions to reach a distant goal"""
 
     direction_map = to_local_map(decision.cost_map, glob_2_loc)
     navi_map = to_local_map(r_map.global_conf_navi, glob_2_loc)
 
-    obstacles = np.logical_or(navi_map < 0, navi_top < 0)
-    navigable = np.logical_or(navi_map > 0, navi_top > 0)
-    np.logical_and(~obstacles, navigable, out=navigable)
+    if aligned_to_ground:
+        obstacles = np.logical_or(navi_map < 0, navi_top < 0)
+        navigable = np.logical_or(navi_map > 0, navi_top > 0)
+        np.logical_and(~obstacles, navigable, out=navigable)
+    else:
+        navigable = navi_map > 0
+        obstacles = navi_map < 0
 
     direction_map *= navigable
     direction_map += obstacles * -255.0

@@ -20,6 +20,7 @@ from decision import decision_step
 from perception import perception_step
 from supporting_functions import update_rover, create_output_images
 from images import GROUND_TRUTH_3D
+from transformations import TOP_WIDTH, TOP_HEIGHT
 
 # Initialize socketio server and Flask application
 # (learn more at: https://python-socketio.readthedocs.io/en/latest/)
@@ -69,7 +70,8 @@ class Map():
         self.global_conf_navi = np.zeros((200, 200)).astype(np.float)
         self.global_conf_cur = np.zeros((200, 200)).astype(np.float)
 
-        self.local_rock_map = np.zeros((160, 320), dtype=np.float)
+        self.local_rocks = np.zeros((TOP_HEIGHT, TOP_WIDTH), dtype=np.float)
+        self.local_navi = np.zeros((TOP_HEIGHT, TOP_WIDTH), dtype=np.float)
 
 
 class Time():
