@@ -13,20 +13,21 @@ def navi_direction(navi_top_view):
     """Calculate recommended direction of motion given navigatable
     local confidence map"""
 
-    values = navi_top_view.reshape(-1, 1)
+    values = navi_top_view.reshape(-1)
+
     dirs = transformations.ROVER_CONF_DIRS
+    angles = np.arctan2(dirs[:, 1], dirs[:, 0])
 
     # Ignore walls
-    values = np.copy(values)
-    values[values < 0] = 0
+    weights = np.copy(values)
+    weights[weights < 0] = 0
 
-    result = np.sum(dirs * values, axis=0)
-    score = np.linalg.norm(result)
+    hist, bin_edges = np.histogram(angles, 72, weights=weights)
+    hist_idx = np.argmax(hist)
 
-    with np.errstate(all='ignore'):
-        result /= np.linalg.norm(result)
-
-    np.nan_to_num(result, False)
+    score = hist[hist_idx]
+    angle = 0.5 * (bin_edges[hist_idx] + bin_edges[hist_idx + 1])
+    result = np.array([np.cos(angle), np.sin(angle)])
 
     return result, score
 
@@ -37,7 +38,7 @@ def main():
     img = images.ROCK1
     img_top = transformations.perspective_2_top(img)
     img_navi = classifiers.NAVI.predict(img_top)
-    img_navi_dir = navi_direction(img_navi)
+    img_navi_dir = navi_direction(img_navi)[0]
 
     plt.figure(figsize=(12, 9))
 

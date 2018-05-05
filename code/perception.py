@@ -63,7 +63,7 @@ def perception_step(rover):
         # rocks map is being forgotten, since it is used for exploration. We
         # should not forget navigable map, as mapping percent is one of the
         # passing criteria for this project
-        r_map.global_conf_rocks *= 0.99
+        r_map.global_conf_rocks *= 0.998
 
         rocks_mask = r_map.global_conf_rocks > 0
 
@@ -164,7 +164,7 @@ def to_local_map(global_map, glob_2_loc):
 def update_cost_map(decision, global_navi_map):
     """Recalculate the state of the cost_map, using value iteration algorithm"""
     decision.cost_map *= global_navi_map > -1.0
-    decision.cost_map = 0.998 * cv2.boxFilter(decision.cost_map, -1, (3, 3))
+    decision.cost_map = cv2.boxFilter(decision.cost_map, -1, (5, 5))
     decision.cost_map[:] = np.maximum(decision.cost_map[:], 0.1)
 
 
@@ -190,10 +190,7 @@ def update_stuck_state(rover):
 
     decision = rover.decision
 
-    if abs(rover.control.steer) < 0.01 and abs(rover.control.throttle) < 0.01:
-        decision.stuck_time = None
-        decision.stuck_pos = None
-    elif rover.control.picking_up:
+    if rover.control.picking_up:
         decision.stuck_time = None
         decision.stuck_pos = None
     else:

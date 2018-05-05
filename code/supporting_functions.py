@@ -120,23 +120,8 @@ def create_output_images(rover):
 def create_output_map(rover):
     """Create a scaled map for plotting and clean up obs/nav pixels a bit"""
 
-    if np.max(rover.statistics.worldmap[:, :, 2]) > 0:
-        nav_pix = rover.statistics.worldmap[:, :, 2] > 0
-
-        navigable = rover.statistics.worldmap[:, :, 2] * (
-            255 / np.mean(rover.statistics.worldmap[nav_pix, 2]))
-
-    else:
-        navigable = rover.statistics.worldmap[:, :, 2]
-
-    if np.max(rover.statistics.worldmap[:, :, 0]) > 0:
-        obs_pix = rover.statistics.worldmap[:, :, 0] > 0
-
-        obstacle = rover.statistics.worldmap[:, :, 0] * (
-            255 / np.mean(rover.statistics.worldmap[obs_pix, 0]))
-
-    else:
-        obstacle = rover.statistics.worldmap[:, :, 0]
+    navigable = rover.statistics.worldmap[:, :, 2]
+    obstacle = rover.statistics.worldmap[:, :, 0]
 
     likely_nav = navigable >= obstacle
 

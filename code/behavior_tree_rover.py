@@ -59,20 +59,20 @@ class GetUnstuck(Node):
             return Result.Continue
 
         if 0 == self.__stage:
-            self.__next_time = rover.time.total + 1.0
-            self.__steer = 0.0
-            self.__throttle = 0.0
-            self.__brake = 10.0
-        elif 1 == self.__stage:
             self.__next_time = rover.time.total + 3.0 * random.random()
             self.__steer = 20 if random.random() > 0.5 else -20
             self.__throttle = 0.0
             self.__brake = 0.0
-        elif 2 == self.__stage:
+        elif 1 == self.__stage:
             self.__next_time = rover.time.total + 2.0
             self.__steer = 0.0
             self.__throttle = 5.0
             self.__brake = 0.0
+        elif 2 == self.__stage:
+            self.__next_time = rover.time.total + 1.0
+            self.__steer = 0.0
+            self.__throttle = 0.0
+            self.__brake = 10.0
         else:
             self.__stage = 0
             self.__next_time = 0
@@ -300,6 +300,7 @@ class Stop(Node):
     """Stops the rover"""
 
     def __init__(self):
+        super().__init__()
         self.__time = 0
 
 
