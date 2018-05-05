@@ -185,17 +185,28 @@ class SlowlyFollowRock(Node):
 
         if np.sum(pts_on_the_way) > 0:
             obstacles = np.sum(r_map.local_navi.ravel()[pts_on_the_way] < -10)
-            if obstacles > 10:
+            if obstacles > 20:
                 return Result.Failure
 
         angle_deg = nav_angle(nav_dir)
         if is_valid_nav_angle(angle_deg):
-            rover.control.throttle = 0.05
+            if rover.perception.vel > 2.0:
+                rover.control.brake = 10.0
+                rover.control.throttle = 0.0
+            elif rover.perception.vel > 0.2:
+                rover.control.brake = 0.0
+                rover.control.throttle = 0.05
+            else:
+                rover.control.brake = 0.0
+                rover.control.throttle = 0.2
         else:
             rover.control.throttle = 0.0
+            if rover.perception.vel > 0.2:
+                rover.control.brake = 10.0
+            else:
+                rover.control.brake = 0.0
 
         rover.control.steer = np.clip(angle_deg, -15, 15)
-        rover.control.brake = 0.0
         return Result.Success
 
 

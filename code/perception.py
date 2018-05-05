@@ -87,14 +87,40 @@ def perception_step(rover):
     r_map.local_rocks = to_local_map(r_map.global_conf_rocks, glob_2_loc)
     r_map.local_navi = to_local_map(r_map.global_conf_navi, glob_2_loc)
 
-    decision.nav_dir = control.navi_direction(direction_map)
-    decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
+    choose_best_direction(decision, direction_map, nav_top)
 
     statistics.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
     statistics.vision_image[:, :, 1] = 255 * (rocks_top > 0)
     statistics.vision_image[:, :, 2] = direction_map * (direction_map > 0)
 
     return rover
+
+
+def choose_best_direction(decision, direction_map, nav_top):
+    """Find best direction for the rover motion"""
+
+    decision.nav_dir, score = control.navi_direction(direction_map)
+    decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
+
+    # Try perpendicular decisions in case there is an obstacle in front
+    if np.linalg.norm(decision.nav_dir) > 1e-1:
+        left_dir = np.array([-decision.nav_dir[1], decision.nav_dir[0]])
+        try_adjacent_dir(decision, score, direction_map, nav_top, left_dir)
+        try_adjacent_dir(decision, score, direction_map, nav_top, -left_dir)
+
+
+def try_adjacent_dir(decision, score, direction_map, nav_top, adjacent_dir):
+    """Tries adjacent direction to see if it produces more navigable pixels"""
+
+    mask_inliers = (transformations.ROVER_CONF_DIRS.dot(
+        adjacent_dir) > 0.5).reshape(direction_map.shape)
+
+    refined_dir, refined_score = control.navi_direction(
+        direction_map * mask_inliers)
+
+    if refined_score > score:
+        decision.nav_dir = refined_dir
+        decision.nav_pixels = calc_nav_pixels(refined_dir, nav_top)
 
 
 def calc_nav_pixels(nav_dir, nav_top):

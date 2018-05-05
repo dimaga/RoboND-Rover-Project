@@ -20,15 +20,15 @@ def navi_direction(navi_top_view):
     values = np.copy(values)
     values[values < 0] = 0
 
-    result = np.mean(dirs * values, axis=0)
+    result = np.sum(dirs * values, axis=0)
+    score = np.linalg.norm(result)
 
     with np.errstate(all='ignore'):
         result /= np.linalg.norm(result)
 
     np.nan_to_num(result, False)
 
-    return result
-
+    return result, score
 
 
 def main():

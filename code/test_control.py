@@ -19,7 +19,7 @@ class TestConstrol(unittest.TestCase):
         nav *= -1.0
         nav[:TOP_CENTER_Y, TOP_CENTER_X] = 1.0
 
-        direction = control.navi_direction(nav)
+        direction = control.navi_direction(nav)[0]
 
         # dir is returned in rover space
         np.testing.assert_almost_equal(np.array([1.0, 0.0]), direction)
@@ -29,7 +29,7 @@ class TestConstrol(unittest.TestCase):
         """If there is a draw, returns zero vector"""
 
         nav = np.zeros((TOP_HEIGHT, TOP_WIDTH), np.float32)
-        direction = control.navi_direction(nav)
+        direction = control.navi_direction(nav)[0]
         np.testing.assert_almost_equal(np.array([0.0, 0.0]), direction)
 
 
