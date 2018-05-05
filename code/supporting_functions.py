@@ -25,6 +25,8 @@ def convert_to_float(string_to_convert):
     return float_value
 
 
+PREV_TRACE = ""
+
 def update_rover(rover, data):
     """Read received data from simulator and write information into rover"""
 
@@ -88,7 +90,13 @@ def update_rover(rover, data):
     #    'samples remaining:', data["sample_count"],
     #    'samples collected:', rover.statistics.samples_collected)
 
-    print(rover.time.total, ROOT.trace())
+    #pylint: disable=global-statement
+    global PREV_TRACE
+
+    cur_trace = ROOT.trace()
+    if PREV_TRACE != cur_trace:
+        print(rover.time.total, cur_trace)
+        PREV_TRACE = cur_trace
 
     # Get the current image from the center camera of the rover
     img_string = data["image"]

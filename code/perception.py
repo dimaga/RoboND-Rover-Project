@@ -113,7 +113,7 @@ def try_adjacent_dir(decision, score, direction_map, nav_top, adjacent_dir):
     """Tries adjacent direction to see if it produces more navigable pixels"""
 
     mask_inliers = (transformations.ROVER_CONF_DIRS.dot(
-        adjacent_dir) > 0.5).reshape(direction_map.shape)
+        adjacent_dir) > 0.0).reshape(direction_map.shape)
 
     refined_dir, refined_score = control.navi_direction(
         direction_map * mask_inliers)
