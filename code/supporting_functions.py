@@ -29,9 +29,9 @@ def update_rover(rover, data):
     """Read received data from simulator and write information into rover"""
 
     # Initialize start time and sample positions
-    if rover.statistics.start_time is None:
-        rover.statistics.start_time = time.time()
-        rover.statistics.total_time = 0
+    if rover.time.start is None:
+        rover.time.start = time.time()
+        rover.time.total = 0
 
         samples_xpos = np.int_([convert_to_float(pos.strip())
                                 for pos in data["samples_x"].split(';')])
@@ -43,9 +43,9 @@ def update_rover(rover, data):
         rover.statistics.samples_to_find = np.int(data["sample_count"])
     # Or just update elapsed time
     else:
-        tot_time = time.time() - rover.statistics.start_time
+        tot_time = time.time() - rover.time.start
         if np.isfinite(tot_time):
-            rover.statistics.total_time = tot_time
+            rover.time.total = tot_time
 
     # Print out the fields in the telemetry data dictionary
     # print(data.keys())
@@ -84,11 +84,11 @@ def update_rover(rover, data):
     #    'near_sample:', rover.perception.near_sample,
     #    'picking_up:', data["picking_up"],
     #    'sending pickup:', rover.control.send_pickup,
-    #    'total time:', rover.statistics.total_time,
+    #    'total time:', rover.time.total,
     #    'samples remaining:', data["sample_count"],
     #    'samples collected:', rover.statistics.samples_collected)
 
-    print(rover.statistics.total_time, ROOT.trace())
+    print(rover.time.total, ROOT.trace())
 
     # Get the current image from the center camera of the rover
     img_string = data["image"]
@@ -112,29 +112,29 @@ def create_output_images(rover):
 def create_output_map(rover):
     """Create a scaled map for plotting and clean up obs/nav pixels a bit"""
 
-    if np.max(rover.map.worldmap[:, :, 2]) > 0:
-        nav_pix = rover.map.worldmap[:, :, 2] > 0
+    if np.max(rover.statistics.worldmap[:, :, 2]) > 0:
+        nav_pix = rover.statistics.worldmap[:, :, 2] > 0
 
-        navigable = rover.map.worldmap[:, :, 2] * (
-            255 / np.mean(rover.map.worldmap[nav_pix, 2]))
-
-    else:
-        navigable = rover.map.worldmap[:, :, 2]
-
-    if np.max(rover.map.worldmap[:, :, 0]) > 0:
-        obs_pix = rover.map.worldmap[:, :, 0] > 0
-
-        obstacle = rover.map.worldmap[:, :, 0] * (
-            255 / np.mean(rover.map.worldmap[obs_pix, 0]))
+        navigable = rover.statistics.worldmap[:, :, 2] * (
+            255 / np.mean(rover.statistics.worldmap[nav_pix, 2]))
 
     else:
-        obstacle = rover.map.worldmap[:, :, 0]
+        navigable = rover.statistics.worldmap[:, :, 2]
+
+    if np.max(rover.statistics.worldmap[:, :, 0]) > 0:
+        obs_pix = rover.statistics.worldmap[:, :, 0] > 0
+
+        obstacle = rover.statistics.worldmap[:, :, 0] * (
+            255 / np.mean(rover.statistics.worldmap[obs_pix, 0]))
+
+    else:
+        obstacle = rover.statistics.worldmap[:, :, 0]
 
     likely_nav = navigable >= obstacle
 
     obstacle[likely_nav] = 0
 
-    plotmap = np.zeros_like(rover.map.worldmap)
+    plotmap = np.zeros_like(rover.statistics.worldmap)
     plotmap[:, :, 0] = obstacle
     plotmap[:, :, 2] = navigable
     plotmap = plotmap.clip(0, 255)
@@ -143,7 +143,7 @@ def create_output_map(rover):
     map_add = cv2.addWeighted(plotmap, 1, rover.statistics.ground_truth, 0.5, 0)
 
     # Check whether any rock detections are present in worldmap
-    rock_world_pos = rover.map.worldmap[:, :, 1].nonzero()
+    rock_world_pos = rover.statistics.worldmap[:, :, 1].nonzero()
 
     # If there are, we'll step through the known sample positions
     # to confirm whether detections are real
@@ -213,7 +213,7 @@ def output_statistics(map_add, rover, samples_located, plotmap):
 
     cv2.putText(
         map_add,
-        "Time: " + str(np.round(rover.statistics.total_time, 1)) + ' s',
+        "Time: " + str(np.round(rover.time.total, 1)) + ' s',
         (0, 10),
         *font_params)
 
@@ -256,7 +256,7 @@ def pack_to_strings(map_add, rover):
     pil_img.save(buff, format="JPEG")
     encoded_string1 = base64.b64encode(buff.getvalue()).decode("utf-8")
 
-    pil_img = Image.fromarray(rover.map.vision_image.astype(np.uint8))
+    pil_img = Image.fromarray(rover.statistics.vision_image.astype(np.uint8))
     buff = BytesIO()
     pil_img.save(buff, format="JPEG")
     encoded_string2 = base64.b64encode(buff.getvalue()).decode("utf-8")

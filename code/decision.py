@@ -9,7 +9,6 @@ from behavior_tree_rover import \
     ARE_ROCKS_REVEALED, \
     IS_ROCK_PICKABLE, \
     IS_ANY_ROCK_LEFT, \
-    IS_ROCK_VERY_CLOSE, \
     SLOWLY_FOLLOW_ROCK, \
     SET_GOAL_EXPLORE, \
     SET_GOAL_ROCK, \
@@ -107,7 +106,6 @@ def take():
 
     result = Selection("Take Rock")
     result.append(follow_rock_loop())
-    result.append(approach_rock())
     result.append(pick_up_rock())
 
     return result
@@ -125,19 +123,6 @@ def pick_up_rock():
     return result
 
 
-def approach_rock():
-    """Slowly approaches the rock to pick it up"""
-
-    sequence = Sequence("Approach Rock")
-
-    sequence.append(IS_ANY_ROCK_LEFT)
-    sequence.append(Not(IS_ROCK_PICKABLE))
-    sequence.append(IS_ROCK_VERY_CLOSE)
-    sequence.append(SLOWLY_FOLLOW_ROCK)
-
-    return sequence
-
-
 def follow_rock_loop():
     """Create a subtree to run the loop, approaching a rock"""
 
@@ -146,11 +131,30 @@ def follow_rock_loop():
     sequence.append(ARE_ROCKS_REVEALED)
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(Not(IS_ROCK_PICKABLE))
-    sequence.append(Not(IS_ROCK_VERY_CLOSE))
+    sequence.append(approach_or_follow_rock())
+
+    return UntilFail(sequence)
+
+
+def approach_or_follow_rock():
+    """Makes a decision whether to approach or follow the rock"""
+
+    selection = Selection("Approach or Follow Rock")
+    selection.append(SLOWLY_FOLLOW_ROCK)
+    selection.append(follow_rock())
+
+    return selection
+
+
+def follow_rock():
+    """Follows the distant rock"""
+
+    sequence = Sequence("Follow Rock")
+
     sequence.append(SET_GOAL_ROCK)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
-    return UntilFail(sequence)
+    return sequence
 
 
 def follow_home():

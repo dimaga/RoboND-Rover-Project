@@ -69,21 +69,27 @@ class Map():
         self.global_conf_navi = np.zeros((200, 200)).astype(np.float)
         self.global_conf_cur = np.zeros((200, 200)).astype(np.float)
 
-        self.vision_image = np.zeros((160, 320, 3), dtype=np.float)
-        self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
         self.local_rock_map = np.zeros((160, 320), dtype=np.float)
+
+
+class Time():
+    """Timing information"""
+
+    def __init__(self):
+        self.start = None  # To record the start time of navigation
+        self.total = None  # To record total duration of naviagation
 
 
 class Statistics():
     """The class retains statistics parameters for decision making"""
 
     def __init__(self):
-        self.start_time = None  # To record the start time of navigation
-        self.total_time = None  # To record total duration of naviagation
-
         self.samples_pos = None  # To store the actual sample positions
         self.samples_to_find = 0  # To store the initial count of samples
         self.samples_collected = 0  # To count the number of samples collected
+
+        self.vision_image = np.zeros((160, 320, 3), dtype=np.float)
+        self.worldmap = np.zeros((200, 200, 3), dtype=np.float)
         self.ground_truth = GROUND_TRUTH_3D  # Ground truth worldmap
 
 
@@ -95,6 +101,7 @@ class RoverState():
         self.control = Control()
         self.decision = Decision()
         self.map = Map()
+        self.time = Time()
         self.statistics = Statistics()
 
 

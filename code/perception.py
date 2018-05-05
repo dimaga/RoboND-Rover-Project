@@ -52,6 +52,7 @@ def perception_step(rover):
     nav_top = transformations.perspective_2_top(navi)
 
     r_map = rover.map
+    statistics = rover.statistics
 
     if aligned_to_ground:
         update_global(loc_2_glob, r_map, nav_top, r_map.global_conf_navi)
@@ -66,13 +67,13 @@ def perception_step(rover):
 
         rocks_mask = r_map.global_conf_rocks > 0
 
-        r_map.worldmap[:, :, 0] = np.maximum(
+        statistics.worldmap[:, :, 0] = np.maximum(
             255 * rocks_mask,
             -r_map.global_conf_navi * (r_map.global_conf_navi < 0))
 
-        r_map.worldmap[:, :, 1] = 255 * rocks_mask
+        statistics.worldmap[:, :, 1] = 255 * rocks_mask
 
-        r_map.worldmap[:, :, 2] = np.maximum(
+        statistics.worldmap[:, :, 2] = np.maximum(
             255 * rocks_mask,
             r_map.global_conf_navi * (r_map.global_conf_navi > 0))
 
@@ -87,9 +88,9 @@ def perception_step(rover):
     decision.nav_dir = control.navi_direction(direction_map)
     decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
 
-    r_map.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
-    r_map.vision_image[:, :, 1] = 255 * (rocks_top > 0)
-    r_map.vision_image[:, :, 2] = direction_map * (direction_map > 0)
+    statistics.vision_image[:, :, 0] = -direction_map * (direction_map < 0)
+    statistics.vision_image[:, :, 1] = 255 * (rocks_top > 0)
+    statistics.vision_image[:, :, 2] = direction_map * (direction_map > 0)
 
     return rover
 

@@ -159,19 +159,6 @@ class FollowGoal(Node):
 FOLLOW_GOAL = FollowGoal()
 
 
-class IsRockVeryClose(Node):
-    """Checks if the rock is very close"""
-
-    def _run(self, rover):
-        if np.max(rover.map.local_rock_map) > ROCKS_THRESHOLD:
-            return Result.Success
-
-        return Result.Failure
-
-
-IS_ROCK_VERY_CLOSE = IsRockVeryClose()
-
-
 class SlowlyFollowRock(Node):
     """Slowly approaches very close rock"""
 
