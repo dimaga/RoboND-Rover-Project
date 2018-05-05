@@ -179,7 +179,7 @@ class SlowlyFollowRock(Node):
 
         nav_dir = transformations.ROVER_CONF_DIRS[rocks][closest_idx]
 
-        closer_pts = all_distances < closest_rock_dist
+        closer_pts = all_distances < (closest_rock_dist - 7)
         similar_dirs = transformations.ROVER_CONF_DIRS.dot(nav_dir) > 0.99
         pts_on_the_way = np.logical_and(closer_pts, similar_dirs)
 
