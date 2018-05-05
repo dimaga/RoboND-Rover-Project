@@ -299,11 +299,25 @@ ROTATE = Rotate()
 class Stop(Node):
     """Stops the rover"""
 
+    def __init__(self):
+        self.__time = 0
+
+
     def _run(self, rover):
+        if rover.time.total is None:
+            return Result.Failure
+
         if rover.perception.vel > 0.2:
             rover.control.throttle = 0
             rover.control.brake = 10.0
             rover.control.steer = 0.0
+
+            self.__time = rover.time.total
+            return Result.Continue
+
+        if rover.time.total < self.__time + 3:
+            # Wait for a while until the rover stops shaking to treat
+            # perception correctly
             return Result.Continue
 
         return Result.Success
