@@ -25,7 +25,7 @@ class IsStuck(Node):
         if rover.time.total is None:
             return Result.Failure
 
-        if rover.time.total < rover.decision.stuck_time + 10:
+        if rover.time.total < rover.decision.stuck_time + 20:
             return Result.Failure
 
         return Result.Success

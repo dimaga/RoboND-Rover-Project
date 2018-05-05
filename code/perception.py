@@ -190,15 +190,11 @@ def update_stuck_state(rover):
 
     decision = rover.decision
 
-    if rover.control.picking_up:
-        decision.stuck_time = None
-        decision.stuck_pos = None
-    else:
-        if decision.stuck_pos is None or \
-            np.linalg.norm(decision.stuck_pos - rover.perception.pos) > 0.3:
+    if decision.stuck_pos is None or \
+        np.linalg.norm(decision.stuck_pos - rover.perception.pos) > 0.3:
 
-            decision.stuck_pos = np.copy(rover.perception.pos)
-            decision.stuck_time = rover.time.total
+        decision.stuck_pos = np.copy(rover.perception.pos)
+        decision.stuck_time = rover.time.total
 
 
 def main():

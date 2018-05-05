@@ -132,7 +132,7 @@ def follow_rock_loop():
     sequence.append(Not(IS_ROCK_PICKABLE))
     sequence.append(approach_or_follow_rock())
 
-    return UntilFail(sequence)
+    return sequence
 
 
 def approach_or_follow_rock():
