@@ -60,6 +60,8 @@ class Decision():
         self.nav_pixels = None  # Number of navigatable pixels
         self.mode = 'forward'  # Current mode (can be forward or stop)
         self.cost_map = np.zeros((200, 200)).astype(np.float)
+        self.stuck_pos = None
+        self.stuck_time = None
 
 
 class Map():

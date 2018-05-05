@@ -80,6 +80,7 @@ def perception_step(rover):
     decision = rover.decision
 
     update_cost_map(decision, r_map.global_conf_navi)
+    update_stuck_state(rover)
 
     glob_2_loc = np.linalg.inv(np.vstack([loc_2_glob, [0.0, 0.0, 1.0]]))[:2, :]
 
@@ -182,6 +183,25 @@ def update_global(loc_2_glob, r_map, local_map, global_map):
 
     # Clipping to prevent the map from being overconfident
     np.clip(global_map, -255.0, 255.0, out=global_map)
+
+
+def update_stuck_state(rover):
+    """Checks if the rover is stuck somewhere"""
+
+    decision = rover.decision
+
+    if abs(rover.control.steer) < 0.01 and abs(rover.control.throttle) < 0.01:
+        decision.stuck_time = None
+        decision.stuck_pos = None
+    elif rover.control.picking_up:
+        decision.stuck_time = None
+        decision.stuck_pos = None
+    else:
+        if decision.stuck_pos is None or \
+            np.linalg.norm(decision.stuck_pos - rover.perception.pos) > 0.3:
+
+            decision.stuck_pos = np.copy(rover.perception.pos)
+            decision.stuck_time = rover.time.total
 
 
 def main():

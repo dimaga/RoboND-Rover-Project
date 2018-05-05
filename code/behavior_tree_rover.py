@@ -3,6 +3,7 @@
 
 import math
 from enum import Enum
+import random
 import numpy as np
 import transformations
 from behavior_tree_basic import Node, Result
@@ -15,7 +16,19 @@ class IsStuck(Node):
     of time despite steering or throttle commands"""
 
     def _run(self, rover):
-        return Result.Failure
+        if rover.decision.stuck_pos is None:
+            return Result.Failure
+
+        if rover.decision.stuck_time is None:
+            return Result.Failure
+
+        if rover.time.total is None:
+            return Result.Failure
+
+        if rover.time.total < rover.decision.stuck_time + 10:
+            return Result.Failure
+
+        return Result.Success
 
 
 IS_STUCK = IsStuck()
@@ -24,8 +37,49 @@ IS_STUCK = IsStuck()
 class GetUnstuck(Node):
     """Performs random actions to unstuck from the collision"""
 
+    def __init__(self):
+        super().__init__()
+        self.__stage = 0
+        self.__next_time = 0
+        self.__steer = 0
+        self.__throttle = 0
+        self.__brake = 0
+
+
     def _run(self, rover):
-        return Result.Failure
+        if rover.time.total is None:
+            self.__stage = 0
+            self.__next_time = 0
+            return Result.Failure
+
+        if rover.time.total < self.__next_time:
+            rover.control.steer = self.__steer
+            rover.control.throttle = self.__throttle
+            rover.control.brake = self.__brake
+            return Result.Continue
+
+        if 0 == self.__stage:
+            self.__next_time = rover.time.total + 1.0
+            self.__steer = 0.0
+            self.__throttle = 0.0
+            self.__brake = 10.0
+        elif 1 == self.__stage:
+            self.__next_time = rover.time.total + 3.0 * random.random()
+            self.__steer = 20 if random.random() > 0.5 else -20
+            self.__throttle = 0.0
+            self.__brake = 0.0
+        elif 2 == self.__stage:
+            self.__next_time = rover.time.total + 2.0
+            self.__steer = 0.0
+            self.__throttle = 5.0
+            self.__brake = 0.0
+        else:
+            self.__stage = 0
+            self.__next_time = 0
+            return Result.Success
+
+        self.__stage += 1
+        return Result.Continue
 
 
 GET_UNSTUCK = GetUnstuck()

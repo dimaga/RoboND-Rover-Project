@@ -72,7 +72,7 @@ def take_all():
     sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(explore_unstuck_take())
 
-    return UntilFail(sequence)
+    return sequence
 
 
 def explore_unstuck_take():
@@ -80,10 +80,9 @@ def explore_unstuck_take():
     rocks"""
 
     result = Selection("Explore, Unstuck, Take")
-
-    result.append(loop_explorer())
     result.append(LOOP_UNSTUCK)
     result.append(take())
+    result.append(loop_explorer())
 
     return result
 
@@ -98,7 +97,7 @@ def loop_explorer():
     sequence.append(SET_GOAL_EXPLORE)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
-    return UntilFail(sequence)
+    return sequence
 
 
 def take():
