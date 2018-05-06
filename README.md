@@ -57,7 +57,7 @@ a few machine learning classifiers from sklearn library with labelled images.
 Such an approach should scale better to realistic environment, where color
 classification can also be substituted with fully convolutional deep neural
 network. Also, machine learning relieved me from tedious work of manually
-adjusting the thresholds, which includes more of a black art rather than
+adjusting the thresholds, which is more a black art than
 engineering
 
 [example_rock1]: ./calibration_images/example_rock1.jpg
@@ -172,52 +172,148 @@ array, which implements a basic version of Value Iteration algorithm. `cost_map`
 is used instead of navigable map to control the steering angle of the rover. The
 `cost_map` is created to be the size of the global map.
 
-The purpose of the `cost_map` is to have the rover explore the environment
-rather than aimlessly follow the navigable terrain. Inside the `cost_map`,
-values, which have low absolute confidence in the global confidence map,
-have the highest rank. All the other values are blurred with a
-`cv2.boxFilter()`. 
+The purpose of the `cost_map` is to have the rover reach some goal rather than
+aimlessly follow navigable terrain. For example, for environment exploration,
+pixels, which have low absolute confidence in the global confidence map,
+have the highest value in `cost_map`. All the other values are blurred with
+`cv2.filter2D()` to let the cost propagate across neighbouring pixels. 
 
-For the given location of the rover, its patch is transformed into the top view
-area of the local rover reference frame, and is masked with obstacles.  
+For the given location of the rover, `cost_map` patch is transformed into the
+top view area of the local rover reference frame, and is masked with obstacles.
+The patch consists of both forward and backward pixels.
 
-In my current implementation, I haven't changed the logic of `decision_step()`,
-adjusting only stop and go thresholds.
+The patch is made of a circular shape so that all the directions are treated
+equally. Additionally, I apply a forward direction gradient so that the rover
+tends to move forward rather than rotate. All the masks and gradients are
+implemented in `prepare_forward_mask()` function of `perception.py`
+
+In `control.py`, `navi_direction()` calculates a forward direction vector.
+This function differs from its notebook version. Instead of a weighted vector
+summation, I fill the histogram of orientations, taking the vector with the
+maximum histogram value. Such an approach overcomes a problem with direction
+distributions that have multiple peaks. Instead of taking a global average
+direction which may lead to forward collision, I take the the direction
+corresponding to one of the peaks.
+
+`decision_step()` method in `decision.py` runs a Behavior Tree to control the
+rover behavior. The theory behind the Behavior Tree structure is well explained
+in Artificial Intelligence for Games by Ian Millington, Secon Edition
+(Chapter 5.4, pg 334). The structure of the rover behavior tree is shown below:
+
+```
+[Selection("Root")]
+ [Sequence("Take All Rocks")]
+  [IsAnyRockLeft]
+  [Selection("Explore, Unstuck, Take")]
+   [UntilFail]
+    [Sequence("Unstuck")]
+     [IsStuck]
+     [GetUnstuck]
+   [Selection("Take Rock")]
+    [Sequence("Follow Rock Loop")]
+     [AreRocksRevealed]
+     [Not]
+      [IsRockPickable]
+     [Selection("Approach or Follow Rock")]
+      [SlowlyFollowRock]
+      [Sequence("Follow Rock")]
+       [SetGoal(Goal.Rock)]
+       [Selection("Follow Goal or Rotate")]
+        [FollowGoal]
+        [Sequence("Rotate To Goal")]
+         [Stop]
+         [Rotate]
+    [Sequence("Pick Up Rock")]
+     [IsRockPickable]
+     [Stop]
+     [PickRock]
+   [Sequence("Explore")]
+    [Not]
+     [AreRocksRevealed]
+    [SetGoal(Goal.Explore)]
+    [Selection("Follow Goal or Rotate")]
+     [FollowGoal]
+     [Sequence("Rotate To Goal")]
+      [Stop]
+      [Rotate]
+ [Selection("Follow Home")]
+  [UntilFail]
+   [Sequence("Unstuck")]
+    [IsStuck]
+    [GetUnstuck]
+  [Sequence("Follow Home Loop")]
+   [Not]
+    [IsStuck]
+   [Not]
+    [IsAnyRockLeft]
+   [SetGoal(Goal.Home)]
+   [Selection("Follow Goal or Rotate")]
+    [FollowGoal]
+    [Sequence("Rotate To Goal")]
+     [Stop]
+     [Rotate]
+   [UntilFail]
+    [Sequence("Stay Home Forever")]
+     [IsAtHomePoint]
+     [Stop]
+```
+
+The rover with the behavior tree, should explore the environment, picking rocks
+as it encounters them, and return to the home, which is the middle of the map.
+If the rover is stuck, its `GetUnstuck` behavior node is activated, which
+sends random steering and throttle to the rover until it gets unstuck.
+
+Basic building blocks of the behavior tree are implemented in
+`behavior_tree_basic.py` and covered with unit tests. Rover specific behavior
+nodes are implemented in `behavior_tree_rover.py`. Each class, representing a
+Node, has a comment, explaining its purpose.
 
 #### 2. Launching in autonomous mode your rover can navigate and map autonomously.  Explain your results and how you might improve them in your writeup.
 
 During my testing, I launched the simulator in 1024x768 with Good Graphics
 Quality on my MacBook Pro, with 2.6 Ghz Intel Core i7 processor.
 
-The rover was able to cover the area of more than 40% map with fidelity of
-higher than 60%, finding a few rock samples a long the way, which meets the
-passing submission criteria for this project.
+Sometimes, the rover was able to pick all six rocks and return home. Though, it
+could take quite a long (more than 2000 seconds).
 
 [final_result]: ./misc/final_result.png
 ![final_result]
 
-The rover may sometimes get stuck in the mountaneous rocks, or roll loops,
-never exploring the rest of the map. Without the `cost_map`, the area of
-exploration would be much smaller, though. 
+The rover may sometimes get stuck forever in collisions, continue forever
+exploring only half of the map, or be unable to pick some of the rocks, which
+are placed in narrow corridors
 
-[got_stuck]: ./misc/got_stuck.png
-![got_stuck]
+In this project, I tried techniques that are too complex for this simple rover
+environment. As a result, I ended up with "variance" trap. Much more time should
+be spent on various local adjustments and probable bug fixing of all the code.
+
+If would be great if the simulator allowed quick retrace of its physics with
+final statistics output, so that we could compare different parameters, without
+waiting too long for the final outcome. Also, it would be great if it were
+possible to retrace the history of motion starting from some intermediate state
+with up-dated code.
 
 Here are the techniques that could be used to further improve the quality of the
 rover:
+   
+* Apply Model Predictive Controller (MPC) sampling rather than simple steering
+with a constant throttle. Calculate the sum of `cost_map` values across the
+sampled trajectories, evaluating distances to potential obstacles. MPC would
+allow to take into account current dynamic state of the rover, and to generate
+more complex maneuvers. 
+  
+* Apply more advanced transformation matrix in `cv2.warpPerspective` to deal
+with arbitrary pitch and roll angle values
 
-* Implement more advanced behaviors with a Behavior Tree
-    * Detect by analyzing position of the rover if it is stuck somewhere so as
-    to initiate unstuck behavior with a set of random actions
-
-    * Add a goal to search for rocks or initial position to `cost_map`. Let the
-    rover collect rocks and return home with a more complex Behavior Tree
-    
 * Detect rocks in the original view with a blob detector. Calculate distances 
 and directions to them from positions and sizes of the blobs. Project restored
 3D coordinates in the top view to more accurately locate the rocks. Since
 rock pixels do not fully belong to the ground plane, they are not projected
 correctly by `warpPerspective()` transformation
+
+* Do not update global confidence map with similar measurements that come from
+stationary rover position. Apply changes only when the rover sufficiently
+changes its existing position or orientation
 
 * Project only obstacle boundaries into the top view rather than the whole area.
 Most obstacle pixels are also not part of the ground plane, which is the source
@@ -225,19 +321,3 @@ of errors. After this fix, the top view area of the navigable terrain could be
 extended. Unfortunately, my naive implementation of this approach failed:
 obstacle boundaries turned out to be very thin so that they were quickly washed
 out by misdetected navigable pixels
-
-* Apply more advanced control of the rover so that it better follows the
-`cost_map` in the direction of the maximum cost. Consider delays in between
-steering command and the actual change in position with a PD or MPC controllers
-
-* Since the time the picture from the rover camera is taken may not exactly
-correspond to roll and pitch times, analyze how roll and pitch values change.
-Update global confidence map one only if roll and pitch values remain constant
-for a while. That is test that pitch and roll derivatives are also close to zero
-
-* Apply more advanced transformation matrix in `cv2.warpPerspective` to deal
-with arbitrary pitch and roll angle values
-
-* Do not update global confidence map with similar measurements that come from
-stationary rover position. Apply changes only when the rover sufficiently
-changes its existing position or orientation
