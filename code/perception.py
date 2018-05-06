@@ -63,7 +63,7 @@ def perception_step(rover):
         # rocks map is being forgotten, since it is used for exploration. We
         # should not forget navigable map, as mapping percent is one of the
         # passing criteria for this project
-        r_map.global_conf_rocks *= 0.998
+        r_map.global_conf_rocks *= 0.9999
 
         rocks_mask = r_map.global_conf_rocks > 0
 
@@ -100,28 +100,8 @@ def perception_step(rover):
 def choose_best_direction(decision, direction_map, nav_top):
     """Find best direction for the rover motion"""
 
-    decision.nav_dir, score = control.navi_direction(direction_map)
+    decision.nav_dir = control.navi_direction(direction_map)
     decision.nav_pixels = calc_nav_pixels(decision.nav_dir, nav_top)
-
-    # Try perpendicular decisions in case there is an obstacle in front
-    if np.linalg.norm(decision.nav_dir) > 1e-1:
-        left_dir = np.array([-decision.nav_dir[1], decision.nav_dir[0]])
-        try_adjacent_dir(decision, score, direction_map, nav_top, left_dir)
-        try_adjacent_dir(decision, score, direction_map, nav_top, -left_dir)
-
-
-def try_adjacent_dir(decision, score, direction_map, nav_top, adjacent_dir):
-    """Tries adjacent direction to see if it produces more navigable pixels"""
-
-    mask_inliers = (transformations.ROVER_CONF_DIRS.dot(
-        adjacent_dir) > 0.0).reshape(direction_map.shape)
-
-    refined_dir, refined_score = control.navi_direction(
-        direction_map * mask_inliers)
-
-    if refined_score > score:
-        decision.nav_dir = refined_dir
-        decision.nav_pixels = calc_nav_pixels(refined_dir, nav_top)
 
 
 def calc_nav_pixels(nav_dir, nav_top):
@@ -164,8 +144,14 @@ def to_local_map(global_map, glob_2_loc):
 def update_cost_map(decision, global_navi_map):
     """Recalculate the state of the cost_map, using value iteration algorithm"""
     decision.cost_map *= global_navi_map > -1.0
-    decision.cost_map = cv2.boxFilter(decision.cost_map, -1, (5, 5))
-    decision.cost_map[:] = np.maximum(decision.cost_map[:], 0.1)
+
+    kernel = np.array([
+        [0.0125, 0.0125, 0.0125],
+        [0.0125, 0.9000, 0.0125],
+        [0.0125, 0.0125, 0.0125]])
+
+    decision.cost_map = cv2.filter2D(decision.cost_map, -1, kernel) * 0.99
+    np.maximum(decision.cost_map, 0.1, out=decision.cost_map)
 
 
 def update_global(loc_2_glob, r_map, local_map, global_map):

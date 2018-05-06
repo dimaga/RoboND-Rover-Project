@@ -19,7 +19,7 @@ class TestConstrol(unittest.TestCase):
         nav *= -1.0
         nav[:TOP_CENTER_Y, TOP_CENTER_X] = 1.0
 
-        direction = control.navi_direction(nav)[0]
+        direction = control.navi_direction(nav)
 
         # dir is returned in rover space
         np.testing.assert_almost_equal(

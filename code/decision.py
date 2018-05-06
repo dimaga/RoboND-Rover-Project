@@ -177,7 +177,7 @@ def follow_home_loop():
     sequence.append(SET_GOAL_HOME)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
-    return UntilFail(sequence)
+    return sequence
 
 
 ROOT = create_behavior_tree()

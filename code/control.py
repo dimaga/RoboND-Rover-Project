@@ -25,11 +25,10 @@ def navi_direction(navi_top_view):
     hist, bin_edges = np.histogram(angles, 72, weights=weights)
     hist_idx = np.argmax(hist)
 
-    score = hist[hist_idx]
     angle = 0.5 * (bin_edges[hist_idx] + bin_edges[hist_idx + 1])
     result = np.array([np.cos(angle), np.sin(angle)])
 
-    return result, score
+    return result
 
 
 def main():
@@ -38,7 +37,7 @@ def main():
     img = images.ROCK1
     img_top = transformations.perspective_2_top(img)
     img_navi = classifiers.NAVI.predict(img_top)
-    img_navi_dir = navi_direction(img_navi)[0]
+    img_navi_dir = navi_direction(img_navi)
 
     plt.figure(figsize=(12, 9))
 
