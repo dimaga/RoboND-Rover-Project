@@ -16,7 +16,8 @@ from behavior_tree_rover import \
     FOLLOW_GOAL, \
     ROTATE, \
     STOP, \
-    PICK_ROCK
+    PICK_ROCK, \
+    IS_AT_HOME_POINT
 
 
 def create_behavior_tree():
@@ -93,7 +94,6 @@ def loop_explorer():
     sequence = Sequence("Explore")
 
     sequence.append(Not(ARE_ROCKS_REVEALED))
-    sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(SET_GOAL_EXPLORE)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
 
@@ -128,7 +128,6 @@ def follow_rock_loop():
     sequence = Sequence("Follow Rock Loop")
 
     sequence.append(ARE_ROCKS_REVEALED)
-    sequence.append(IS_ANY_ROCK_LEFT)
     sequence.append(Not(IS_ROCK_PICKABLE))
     sequence.append(approach_or_follow_rock())
 
@@ -176,8 +175,19 @@ def follow_home_loop():
     sequence.append(Not(IS_ANY_ROCK_LEFT))
     sequence.append(SET_GOAL_HOME)
     sequence.append(FOLLOW_GOAL_OR_ROTATE)
+    sequence.append(stay_home_forever())
 
     return sequence
+
+
+def stay_home_forever():
+    """If rover reaches the destination point, stay there forever"""
+
+    sequence = Sequence("Stay Home Forever")
+    sequence.append(IS_AT_HOME_POINT)
+    sequence.append(STOP)
+
+    return UntilFail(sequence)
 
 
 ROOT = create_behavior_tree()

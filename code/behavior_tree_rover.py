@@ -9,6 +9,7 @@ import transformations
 from behavior_tree_basic import Node, Result
 
 ROCKS_THRESHOLD = 7
+HOME_POS = np.array([98, 87])
 
 
 class IsStuck(Node):
@@ -160,7 +161,7 @@ class SetGoal(Node):
 
         elif Goal.Home == self.__goal:
             goals = np.zeros((rover.map.global_conf_rocks.shape))
-            goals[87, 98] = 255
+            goals[int(HOME_POS[1]), int(HOME_POS[0])] = 255
 
         rover.decision.cost_map += goals
         np.minimum(255, rover.decision.cost_map, out=rover.decision.cost_map)
@@ -344,3 +345,19 @@ class PickRock(Node):
 
 
 PICK_ROCK = PickRock()
+
+
+class IsAtHomePoint(Node):
+    """Checks if the rover is at home point, which is the middle of the map"""
+
+    def _run(self, rover):
+        diff = HOME_POS - rover.perception.pos
+        distance = np.linalg.norm(diff)
+
+        if distance < 10:
+            return Result.Success
+
+        return Result.Failure
+
+
+IS_AT_HOME_POINT = IsAtHomePoint()
